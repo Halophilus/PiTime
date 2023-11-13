@@ -1,4 +1,202 @@
 <!DOCTYPE html>
-<html lang="en">
-    hello ben
-</html>
+<html>
+<head>
+    <title>Alarm Clock Form</title>
+    <style>
+        .form-group {
+            display: block;
+            margin-bottom: 10px;
+        }
+
+        .form-group label {
+            display: block;
+        }
+
+        .form-group input[type="text"],
+        .form-group textarea,
+        .form-group select {
+            width: 100%;
+            box-sizing: border-box;
+        }
+
+        .form-row {
+            display: flex;
+            align-items: center;
+        }
+
+        .form-row label {
+            flex: 1;
+        }
+
+        .form-row input[type="checkbox"] {
+            flex: 1;
+        }
+
+        .reminder {
+            border-top: 1px solid #ccc;
+            padding-top: 10px;
+            margin-top: 10px;
+        }
+        .top-nav {
+            text-align: center;
+            margin-bottom: 20px;
+        }
+
+        .top-nav a {
+            margin: 0 10px;
+            text-decoration: none;
+            color: #007bff;
+        }
+
+        .top-nav hr {
+            margin-top: 10px;
+        }
+    </style>
+    <script>
+        var reminderCount = 0;
+
+        function addReminder() {
+            var reminderContainer = document.getElementById("reminder-container");
+            var reminderDiv = document.createElement("div");
+            reminderDiv.classList.add("reminder");
+
+            // Add time input
+            var timeInput = document.createElement("input");
+            timeInput.type = "time";
+            timeInput.name = "reminder_time[]";
+            timeInput.required = true;
+
+            var timeLabel = document.createElement("label");
+            timeLabel.textContent = "Time:";
+            reminderDiv.appendChild(timeLabel);
+            reminderDiv.appendChild(timeInput);
+
+            // Add date input
+            var dateInput = document.createElement("input");
+            dateInput.type = "date";
+            dateInput.name = "reminder_date[]";
+            dateInput.required = true;
+
+            var dateLabel = document.createElement("label");
+            dateLabel.textContent = "Date:";
+            reminderDiv.appendChild(dateLabel);
+            reminderDiv.appendChild(dateInput);
+
+            // Add checkboxes for options
+            var options = ["Buzzer", "Vibration", "Spoken", "Web_Unlock", "Alarm"];
+            for (var i = 0; i < options.length; i++) {
+                var option = options[i];
+
+                var optionInput = document.createElement("input");
+                optionInput.type = "checkbox";
+                optionInput.name = "reminder_options[" + reminderCount + "][" + option + "]";
+                optionInput.value = option;
+
+                var optionLabel = document.createElement("label");
+                optionLabel.textContent = option;
+
+                var rowDiv = document.createElement("div");
+                rowDiv.classList.add("form-row");
+                rowDiv.appendChild(optionLabel);
+                rowDiv.appendChild(optionInput);
+                reminderDiv.appendChild(rowDiv);
+
+                // Add an alarm dropdown if the option is "Alarm"
+                if (option === "Alarm") {
+                    var alarmSelect = document.createElement("select");
+                    alarmSelect.name = "reminder_alarm[" + reminderCount + "]";
+                    alarmSelect.style.display = "none";
+
+                    var alarms = ["Alarm 1", "Alarm 2", "Alarm 3"];
+                    for (var j = 0; j < alarms.length; j++) {
+                        var alarm = alarms[j];
+                        var alarmElement = document.createElement("option");
+                        alarmElement.value = alarm;
+                        alarmElement.textContent = alarm;
+                        alarmSelect.appendChild(alarmElement);
+                    }
+
+                    var alarmLabel = document.createElement("label");
+                    alarmLabel.textContent = "Select Alarm:";
+                    alarmLabel.style.display = "none";
+                    reminderDiv.appendChild(alarmLabel);
+                    reminderDiv.appendChild(alarmSelect);
+
+                    optionInput.addEventListener("change", function() {
+                        if (this.checked && this.value === "Alarm") {
+                            alarmSelect.style.display = "block";
+                            alarmLabel.style.display = "block";
+                        } else {
+                            alarmSelect.style.display = "none";
+                            alarmLabel.style.display = "none";
+                        }
+                    });
+                }
+            }
+
+            reminderContainer.appendChild(reminderDiv);
+            if (reminderContainer.children.length > 1) {
+                addRemoveButton(reminderDiv);
+            }
+            reminderCount++;
+        }
+
+        function addRemoveButton(reminderDiv) {
+            var removeButton = document.createElement("button");
+            removeButton.type = "button";
+            removeButton.textContent = "Remove Reminder";
+            removeButton.onclick = function() {
+                reminderDiv.remove();
+            };
+            reminderDiv.appendChild(removeButton);
+        }
+    
+                function init() {
+            addReminder();
+        }
+
+        // Call init when the window finishes loading
+        window.onload = init;
+    </script>
+</head>
+<body>
+    <div class="top-nav">
+        <a href="/upcoming-events">Upcoming Events</a>
+        <a href="/past-events">Past Events</a>
+        <hr>
+    </div>
+    <h1>PiTime Alarm Form</h1>
+    <form action="/submit" method="post">
+        <!-- Main Event Title and Description -->
+        <div class="form-group">
+            <label for="main_event_title">Event Title:</label>
+            <input type="text" id="main_event_title" name="main_event_title" required>
+        </div>
+
+        <div class="form-group">
+            <label for="main_event_description">Description:</label>
+            <textarea id="main_event_description" name="main_event_description" rows="4" cols="50" required></textarea>
+        </div>
+
+        <!-- Reminders -->
+        <div id="reminder-container"></div>
+
+        <!-- Button to add the first reminder -->
+        <button type="button" onclick="addReminder()">Add Reminder</button>
+
+        <!-- Submit Button -->
+        <input type="submit" value="Submit">
+        <div class="form-errors">
+            {% with messages = get_flashed_messages() %}
+                {% if messages %}
+                    <ul>
+                        {% for message in messages %}
+                            <li>{{ message }}</li>
+                        {% endfor %}
+                    </ul>
+                {% endif %}
+            {% endwith %}
+        </div>    
+    </form>
+</body>
+
