@@ -1,6 +1,7 @@
 from flask import Flask, render_template, request, redirect, url_for
 from jinja2 import Template
-import datetime
+from datetime import datetime
+import re
 import requests
 import os
 from models import db, Event, Reminder
@@ -15,14 +16,9 @@ db.init_app(app)
 def index():
     return render_template("index.html")
 
-@app.route('/submit', methods = ['POST'])
-def submit():
-    from datetime import datetime
-from flask import flash
-
 @app.route('/submit', methods=['POST'])
 def submit():
-
+    print(request.form)
     # Only one declaration of these per event submission
     event_title = request.form.get('main_event_title')
     event_description = request.form.get('main_event_description')
@@ -33,7 +29,7 @@ def submit():
 
     reminder_options = [[] for _ in reminder_times] # List of list of options for each reminder in order
     reminder_alarms = [None for _ in reminder_times] # List of alarm choices in order (default = None)
-
+    '''
     # Error Handling
     valid = True # Stays true as long as all input is valid
     error_messages = [] # Collects messages for all errors encountered
@@ -68,19 +64,28 @@ def submit():
                                reminder_options=reminder_options,
                                reminder_alarms=reminder_alarms)
 
-
+    '''
     current_event = Event(title = event_title, description = event_description) # Creates singular event
-    db.session.add(current_event) # Commits event to db
-    db.session.flush() # Assigns an ID to current_event so it can be associated w/ reminder objects
+    #db.session.add(current_event) # Commits event to db
+    #db.session.flush() # Assigns an ID to current_event so it can be associated w/ reminder objects
+    
+    # This is necessary to isolate the reminder identifiers that were actually submitted, as they user reminder addition/deletions can't be anticipated procedurally
+    # 
+    options_keys = [] # The serial number associated with each JS instance of a reminder. JS function addReminder increments a serial as a unique identifier, decrementing would introduce repetitive values to the domain 
+    for key in request.form: # For every key in MultiImmutableDict.request.form, representing the names of the attributes in the alarm clock form...
+        if key.startswith('reminder_options['): # one of two attributes that contains the reminder ID
+            parse_key = re.split(r'\[|\]', key) # Treat the key as a regular expression and split at [ and ] delimiters
+            options_keys.append(int(parse_key[1])) # Adds reminder serial number to list
+    options_keys = sorted(set(options_keys)) # This ensures that reminded IDs are sorted in increasing order
+    print(options_keys)
+    for index, reminder_id in enumerate(options_keys): # this maps the reminder ID to an index in the lists describing each reminder's attributes
+        for key in request.form: # List of options per reminder index
+            if key.startswith(f'reminder_options[{reminder_id}]'): # if one of the attributes submitted to the form is of the form of an optional attribute...
+                reminder_options[index].append(request.form[key]) # Add the string value of that key to the list of options corresponding to a certain reminder
+            if key.startswith(f'reminder_alarm[{reminder_id}]') and 'Alarm' in reminder_options[index]: # If the attribute describes a reminder's choice of alarm and the alarm is enabled by the optional attributes for that reminder...
+                reminder_alarms[index] = request.form[key] # Even if a user does not enable Alarm as an optional parameter, a value for alarm choice is submitted. This eliminates adding an alarm to reminder objects that don't enable it.
 
-    for index in range(0, len(reminder_options)):
-        for key in request.form: # Allocates options into list per reminder
-            if key.startswith(f'reminder_options[{index}]'):
-                reminder_options[index].append(request.form[key])
-            if key.startswith(f'reminder_alarm[{index}]') and 'Alarm' in reminder_options[index]: # Adds alarm selection if 'Alarm' has been added to options already
-                reminder_alarms[index] = request.form[key]
-
-    for date, time, options, alarm_file in zip(reminder_dates, reminder_times, reminder_options, reminder_alarms):
+    for date, time, options, alarm_file in zip(reminder_dates, reminder_times, reminder_options, reminder_alarms): # All of the indices of each of these lists have to correspond with the same reminder object
         # Convert text datetime to datetime object
         timepoint = datetime.strptime(f"{date} {time}", '%Y-%m-%d %H:%M')
 
