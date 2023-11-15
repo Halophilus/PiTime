@@ -107,7 +107,7 @@
                     alarmSelect.name = "reminder_alarm[" + reminderCount + "]";
                     alarmSelect.style.display = "none";
 
-                    var alarms = ["Alarm 1", "Alarm 2", "Alarm 3"];
+                    var alarms = ["Not at all", "Somewhat", "Urgent", "Very", "Extremely"];
                     for (var j = 0; j < alarms.length; j++) {
                         var alarm = alarms[j];
                         var alarmElement = document.createElement("option");
@@ -170,12 +170,12 @@
         <!-- Main Event Title and Description -->
         <div class="form-group">
             <label for="main_event_title">Event Title:</label>
-            <input type="text" id="main_event_title" name="main_event_title" required>
+            <input type="text" id="main_event_title" name="main_event_title" maxlength = 120 required>
         </div>
 
         <div class="form-group">
             <label for="main_event_description">Description:</label>
-            <textarea id="main_event_description" name="main_event_description" rows="4" cols="50" required></textarea>
+            <textarea id="main_event_description" name="main_event_description" rows="4" cols="50" maxlength = 500 required></textarea>
         </div>
 
         <!-- Reminders -->

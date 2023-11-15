@@ -1,27 +1,26 @@
-from flask import Flask, render_template, request, redirect, url_for
-from jinja2 import Template
+from flask import Flask, render_template, request, redirect, url_for, flash
 from datetime import datetime
 import re
-import requests
 import os
 from models import db, Event, Reminder
 
 
 app = Flask(__name__, template_folder=os.path.join(os.path.dirname(os.path.abspath(__file__)), 'templates'))
-app.config['SECRET_KEY'] = ';lkjfdsa'
+app.config['SECRET_KEY'] = ';lkjfdsa' # nice try hacker man
 app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///alarm-reminder.db'
 db.init_app(app)
 
 with app.app_context(): # creates a background environment to keep track of application-level data for the current app instance 
     db.create_all() #idempotent, creates tables if absent but leaves them if they already exist
 
-@app.route("/")
+@app.route("/") # When accessing the root website
 def index():
     return render_template("index.html")
 
-@app.route('/submit', methods=['POST'])
+@app.route('/submit', methods=['POST']) # HTTP verb called for sending data to a server when host/submit URL is called
 def submit():
     '''
+        Takes form information, parses it, and converts it to event/reminder objects
         Request.form attributes:
             'main_event_title' str
             'main_event_description' str
@@ -51,23 +50,20 @@ def submit():
 
     reminder_options = [[] for _ in reminder_times] # List of list of options for each reminder in order
     reminder_alarms = [None for _ in reminder_times] # List of alarm choices in order (default = None)
-    '''
+
     # Error Handling
     valid = True # Stays true as long as all input is valid
     error_messages = [] # Collects messages for all errors encountered
 
     for index, (date, time) in enumerate(zip(reminder_dates, reminder_times)):
-        # Check for empty fields
-        if not date or not time:
-            valid = False
+        if not date or not time: # Check for empty fields
+            valid = False # Raise valid input flag
             error_messages.append(f"Reminder {index + 1} has empty date/time fields.")
             continue
 
-        # Validate date-time format
-        try:
-            reminder_datetime = datetime.strptime(f"{date} {time}", '%Y-%m-%d %H:%M')
-            # Further check if the datetime is in the future
-            if reminder_datetime <= datetime.now():
+        try: # ask for forgiveness
+            reminder_datetime = datetime.strptime(f"{date} {time}", '%Y-%m-%d %H:%M') # Validate date-time format
+            if reminder_datetime <= datetime.now(): # Further check if the datetime is in the future
                 valid = False
                 error_messages.append(f"Reminder {index + 1} is set in the past.")
         # Improper input to datetime.strptime results in raising a ValueError
@@ -77,8 +73,8 @@ def submit():
 
     if not valid:
         for message in error_messages:
-            flash(message)
-        return render_template("index.html", 
+            flash(message) # Display the errors on the bottom of the screen
+        return render_template("index.html", # Returns use to filled out form to revise
                                event_title=event_title, 
                                event_description=event_description, 
                                reminder_times=reminder_times, 
@@ -86,7 +82,7 @@ def submit():
                                reminder_options=reminder_options,
                                reminder_alarms=reminder_alarms)
 
-    '''
+    
     current_event = Event(title = event_title, description = event_description) # Creates singular event
     db.session.add(current_event) # Commits event to db
     db.session.flush() # Assigns an ID to current_event so it can be associated w/ reminder objects
@@ -108,11 +104,12 @@ def submit():
 
     for reminder in zip(reminder_dates, reminder_times, reminder_options, reminder_alarms): # All of the indices of each of these lists have to correspond with the same reminder object
         # print(reminder)
-        # it didn't like for w, x, y, z in zip(...) for some reason?
+        # it didn't like for w, x, y, z in reminder for some reason?
         date = reminder[0]
         time = reminder[1]
         options = reminder[2]
         alarm = reminder[3]
+
         # Convert text datetime to datetime object
         timepoint = datetime.strptime(f"{date} {time}", '%Y-%m-%d %H:%M')
 
@@ -132,19 +129,23 @@ def submit():
             event = current_event
         )
         db.session.add(reminder) # Saves reminder object to current db session
-    try:
-        db.session.commit()
-    except Exception as ex:
-        db.session.rollback()
-        print(f"An error occurred: {ex}")
-    
+    try: # Ask for forgiveness
+        db.session.commit() # Add floating entries to solid state database
+    except Exception as ex: # Generic error message
+        db.session.rollback() # Deletes current floating session instead of committing it
+        print(f"An error occurred: {ex}") # Not overly familiar with the type of errors that could occur here
+    '''
+    # Test block
     print(event_title)
     print(event_description)
     print(reminder_times)
     print(reminder_dates)
     print(reminder_options)
     print(reminder_alarms)
+    '''
     return render_template("index.html")
+
+@app.route
 
 
 if __name__ == "__main__":
