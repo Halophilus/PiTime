@@ -22,4 +22,5 @@ class Reminder(db.Model):
     web_unlock = db.Column(db.Boolean, default = False)
     reminder_lock = db.Column(db.Boolean, default = False)
     alarm = db.Column(db.String(120))  # String alarm selection
+    repeater = db.Column(db.String(50)) # String reminder repeat
     event_id = db.Column(db.Integer, db.ForeignKey('event.id'), nullable=False) # Implicit connection to some event object

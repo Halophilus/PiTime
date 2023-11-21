@@ -28,15 +28,17 @@ def submit():
             'reminder_date[]' str, ibid.
             'reminder_options[x][option]' str, option
             'reminder_alarm[x]' str, alarm ID
+            'reminder_repeats[]' str
         Converts data into:
             1 Event object
                 main_event_title
                 main_event_description
-            Four lists
+            Five lists
                 reminder_time
                 reminder_date
                 reminder_options (list)
                 reminder_alarm (if 'Alarm' in reminder_options)
+                reminder_repeats
             Converts lists into reminder objects per index with foreign key connected to Event object
     '''
     # print(request.form)
@@ -47,6 +49,9 @@ def submit():
     # Fetches a list of all reminder times and dates from form ImmutableMultiDict 
     reminder_times = request.form.getlist('reminder_time[]')
     reminder_dates = request.form.getlist('reminder_date[]')
+
+    reminder_repeats = request.form.getlist('reminder_repeats[]')# All reminders will have at least and at most 1 attribute for "Repeat", so an ordered list represents each reminder in order
+
 
     reminder_options = [[] for _ in reminder_times] # List of list of options for each reminder in order
     reminder_alarms = [None for _ in reminder_times] # List of alarm choices in order (default = None)
@@ -81,7 +86,6 @@ def submit():
                                reminder_dates=reminder_dates,
                                reminder_options=reminder_options,
                                reminder_alarms=reminder_alarms)
-
     
     current_event = Event(title = event_title, description = event_description) # Creates singular event
     db.session.add(current_event) # Commits event to db
@@ -102,13 +106,14 @@ def submit():
             if key.startswith(f'reminder_alarm[{reminder_id}]') and 'Alarm' in reminder_options[index]: # If the attribute describes a reminder's choice of alarm and the alarm is enabled by the optional attributes for that reminder...
                 reminder_alarms[index] = request.form[key] # Even if a user does not enable Alarm as an optional parameter, a value for alarm choice is submitted. This eliminates adding an alarm to reminder objects that don't enable it.
 
-    for reminder in zip(reminder_dates, reminder_times, reminder_options, reminder_alarms): # All of the indices of each of these lists have to correspond with the same reminder object
+    for reminder in zip(reminder_dates, reminder_times, reminder_options, reminder_alarms, reminder_repeats): # All of the indices of each of these lists have to correspond with the same reminder object
         # print(reminder)
         # it didn't like for w, x, y, z in reminder for some reason?
         date = reminder[0]
         time = reminder[1]
         options = reminder[2]
         alarm = reminder[3]
+        repeats = reminder[4]
 
         # Convert text datetime to datetime object
         timepoint = datetime.strptime(f"{date} {time}", '%Y-%m-%d %H:%M')
@@ -126,8 +131,9 @@ def submit():
             spoken = spoken_lock,
             web_unlock = web_unlock_lock,
             alarm = alarm if alarm_lock else None,
+            repeater = repeats,
             event = current_event
-        )
+            )
         db.session.add(reminder) # Saves reminder object to current db session
     try: # Ask for forgiveness
         db.session.commit() # Add floating entries to solid state database

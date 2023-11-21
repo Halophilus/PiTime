@@ -81,7 +81,21 @@
             dateLabel.textContent = "Date:";
             reminderDiv.appendChild(dateLabel);
             reminderDiv.appendChild(dateInput);
+            var repeatSelect = document.createElement("select");
+            repeatSelect.name = "reminder_repeats[" + reminderCount + "]"; // Update the name to include the reminder index
 
+            var repeatOptions = ["Never", "Hourly", "Daily", "Weekly", "Monthly", "Yearly"];
+            repeatOptions.forEach(function(repeatOption) {
+                var option = document.createElement("option");
+                option.value = repeatOption;
+                option.textContent = repeatOption;
+                repeatSelect.appendChild(option);
+            });
+
+            var repeatLabel = document.createElement("label");
+            repeatLabel.textContent = "Repeats:";
+            reminderDiv.appendChild(repeatLabel);
+            reminderDiv.appendChild(repeatSelect);
             // Add checkboxes for options
             var options = ["Buzzer", "Vibration", "Spoken", "Web_Unlock", "Alarm"];
             for (var i = 0; i < options.length; i++) {
@@ -130,6 +144,7 @@
                             alarmSelect.style.display = "none";
                             alarmLabel.style.display = "none";
                         }
+                
                     });
                 }
             }
