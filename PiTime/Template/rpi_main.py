@@ -21,7 +21,7 @@ options_dict = {'buzzer':False,
                 'vibration':False,
                 'spoken':False,
                 'web_unlock':False,
-                'alarm':set('None')}
+                'alarm':{'None'}}
 current_events_dict = {}
 
 global buzzer_module
