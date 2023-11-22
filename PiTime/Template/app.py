@@ -1,4 +1,4 @@
-from flask import Flask, render_template, request, redirect, url_for, flash
+from flask import Flask, render_template, request, redirect, url_for, flash, abort
 from datetime import datetime
 import re
 import os
@@ -12,6 +12,7 @@ db.init_app(app)
 
 with app.app_context(): # creates a background environment to keep track of application-level data for the current app instance 
     db.create_all() #idempotent, creates tables if absent but leaves them if they already exist
+
 
 @app.route("/") # When accessing the root website
 def index():
@@ -40,6 +41,11 @@ def submit():
                 reminder_alarm (if 'Alarm' in reminder_options)
                 reminder_repeats
             Converts lists into reminder objects per index with foreign key connected to Event object
+            ## PERSONAL ADDENDUM ##
+            I wrote this function while still figuring out how to use Flask. I thought you could only
+            write one function per route. It didn't occur to me to dissect the functionality of this
+            script and invest it in individual, external functions. I may come back and fix this,
+            I may not. Either way, this code is heavily commented for the sake of legibility
     '''
     # print(request.form)
     # Only one declaration of these per event submission
@@ -148,10 +154,50 @@ def submit():
     print(reminder_dates)
     print(reminder_options)
     print(reminder_alarms)
+    print(reminder_repeats)
     '''
     return render_template("index.html")
 
-@app.route
+@app.route('/unlock/<path:key>')
+def key_check(key):
+    '''
+    Function: Determines if a user-entered URL matches the web_unlock key decided in rpi_main
+    Parameters: key, string
+    Returns: Switches web_unlock value to 0 from 1 and wipes unlock.txt
+    '''
+    unlock_key = read_unlock_val('unlock.txt')
+    if key == unlock_key:
+        return clear_web_unlock(unlock_key)  # Call the function that should be triggered
+    else:
+        abort(404)  # Not found if the key is not valid
+
+def clear_web_unlock():
+    '''
+    Function performed when web_unlock procedure fulfilled successfully
+        Sets alarm to 0
+        Resets unlock key
+    '''
+    script_directory = os.path.dirname(os.path.abspath(__file__)) # fetches current working directory
+    unlock = os.path.join(script_directory, '.unlock', 'unlock.txt') # builds a relative path
+    alarm = os.path.join(script_directory, '.unlock', 'alarm.txt')
+    open(unlock, 'w').close()
+    with open(alarm, 'w') as alarm_unlock:
+        alarm_unlock.write('0')
+    return "Function triggered successfully!"
+
+def read_unlock_val(file):
+    '''
+    Function: reads relevant unlock keys from file
+    Parameters: file, str, filename of stored value
+    Returns: string contents of file
+    '''
+    script_directory = os.path.dirname(os.path.abspath(__file__)) # fetches current working directory
+    unlock_file_path = os.path.join(script_directory, '.unlock', file) # builds a relative path
+
+    with open(unlock_file_path, 'r') as file: # reads key from file
+        return file.read().strip() # returns key minus leading white space
+
+
 
 
 if __name__ == "__main__":
