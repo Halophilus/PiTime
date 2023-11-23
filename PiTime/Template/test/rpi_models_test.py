@@ -73,7 +73,7 @@ def vibration_test():
     print("Turning off")
     test_vibration.stop()
 
-def test_simple_speaker():
+def speaker_test():
     '''
         Testing generation 5 of the Speaker class
         I originally went through several other iterations of this class of varying complexity
@@ -86,13 +86,13 @@ def test_simple_speaker():
     speaker.start()
     time.sleep(1)
     print("intermittent function start")
-    time.sleep(x)  # Let the v alarm play for x seconds
+    time.sleep(int(x))  # Let the v alarm play for x seconds
     print("intermittent function end")
     time.sleep(1)
     speaker.stop()
 
-
-
 if __name__ == '__main__':
-    test
+    #buzzer_test()
+    #vibration_test()
+    speaker_test()
     # unittest.main()

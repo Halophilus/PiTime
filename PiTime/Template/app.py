@@ -12,7 +12,9 @@ db.init_app(app)
 
 with app.app_context(): # creates a background environment to keep track of application-level data for the current app instance 
     db.create_all() #idempotent, creates tables if absent but leaves them if they already exist
-
+    reminder = Reminder.query.all()
+    for reminders in reminder:
+        print(reminders.repeater)
 
 @app.route("/") # When accessing the root website
 def index():
@@ -47,7 +49,7 @@ def submit():
             script and invest it in individual, external functions. I may come back and fix this,
             I may not. Either way, this code is heavily commented for the sake of legibility
     '''
-    # print(request.form)
+    print(request.form)
     # Only one declaration of these per event submission
     event_title = request.form.get('main_event_title')
     event_description = request.form.get('main_event_description')
@@ -56,11 +58,12 @@ def submit():
     reminder_times = request.form.getlist('reminder_time[]')
     reminder_dates = request.form.getlist('reminder_date[]')
 
-    reminder_repeats = request.form.getlist('reminder_repeats[]')# All reminders will have at least and at most 1 attribute for "Repeat", so an ordered list represents each reminder in order
+    #reminder_repeats = request.form.getlist('reminder_repeats[]')# All reminders will have at least and at most 1 attribute for "Repeat", so an ordered list represents each reminder in order
 
 
     reminder_options = [[] for _ in reminder_times] # List of list of options for each reminder in order
     reminder_alarms = [None for _ in reminder_times] # List of alarm choices in order (default = None)
+    reminder_repeats = [None for _ in reminder_times]
 
     # Error Handling
     valid = True # Stays true as long as all input is valid
@@ -71,7 +74,7 @@ def submit():
             valid = False # Raise valid input flag
             error_messages.append(f"Reminder {index + 1} has empty date/time fields.")
             continue
-
+    
         try: # ask for forgiveness
             reminder_datetime = datetime.strptime(f"{date} {time}", '%Y-%m-%d %H:%M') # Validate date-time format
             if reminder_datetime <= datetime.now(): # Further check if the datetime is in the future
@@ -100,53 +103,57 @@ def submit():
     # This is necessary to isolate the reminder identifiers that were actually submitted, as they user reminder addition/deletions can't be anticipated procedurally
     options_keys = [] # The serial number associated with each JS instance of a reminder. JS function addReminder increments a serial as a unique identifier, decrementing would introduce repetitive values to the domain 
     for key in request.form: # For every key in MultiImmutableDict.request.form, representing the names of the attributes in the alarm clock form...
-        if key.startswith('reminder_options['): # one of two attributes that contains the reminder ID
+        if key.startswith('reminder_options[') or key.startswith('reminder_repeats[') or key.startswith('reminder_alarm['): # one of two attributes that contains the reminder ID
+            print(key)
             parse_key = re.split(r'\[|\]', key) # Treat the key as a regular expression and split at '[' and ']' delimiters
             options_keys.append(int(parse_key[1])) # Adds reminder serial number to list
     options_keys = sorted(set(options_keys)) # This ensures that reminded IDs are sorted in increasing order AND eliminates all redundant entries
-    # print(options_keys)
+    print(options_keys)
     for index, reminder_id in enumerate(options_keys): # this maps the reminder ID to an index in the lists describing each reminder's attributes
         for key in request.form: # List of options per reminder index
             if key.startswith(f'reminder_options[{reminder_id}]'): # if one of the attributes submitted to the form is of the form of an optional attribute...
                 reminder_options[index].append(request.form[key]) # Add the string value of that key to the list of options corresponding to a certain reminder
             if key.startswith(f'reminder_alarm[{reminder_id}]') and 'Alarm' in reminder_options[index]: # If the attribute describes a reminder's choice of alarm and the alarm is enabled by the optional attributes for that reminder...
                 reminder_alarms[index] = request.form[key] # Even if a user does not enable Alarm as an optional parameter, a value for alarm choice is submitted. This eliminates adding an alarm to reminder objects that don't enable it.
-
-    for reminder in zip(reminder_dates, reminder_times, reminder_options, reminder_alarms, reminder_repeats): # All of the indices of each of these lists have to correspond with the same reminder object
-        # print(reminder)
-        # it didn't like for w, x, y, z in reminder for some reason?
-        date = reminder[0]
-        time = reminder[1]
-        options = reminder[2]
-        alarm = reminder[3]
-        repeats = reminder[4]
+            if key.startswith(f'reminder_repeats[{reminder_id}]'):
+                reminder_repeats[index] = request.form[key]
+    #for reminder_data in zip(reminder_dates, reminder_times, reminder_options, reminder_alarms, reminder_repeats):
+    # Iterate through the indices of the reminder lists
+    for i in range(len(reminder_dates)):
+        # Access each attribute using the index
+        date = reminder_dates[i]
+        time = reminder_times[i]
+        options = reminder_options[i]
+        alarm = reminder_alarms[i] if 'Alarm' in reminder_options[i] else None
+        repeats = reminder_repeats[i]
 
         # Convert text datetime to datetime object
         timepoint = datetime.strptime(f"{date} {time}", '%Y-%m-%d %H:%M')
 
         # Convert option choices into Boolean values
         buzzer_lock = 'Buzzer' in options
-        alarm_lock = 'Alarm' in options
-        web_unlock_lock = 'Web_Unlock' in options 
-        spoken_lock = 'Spoken' in options
         vibration_lock = 'Vibration' in options
-        reminder = Reminder(
-            date_time = timepoint,
-            buzzer = buzzer_lock,
-            vibration = vibration_lock,
-            spoken = spoken_lock,
-            web_unlock = web_unlock_lock,
-            alarm = alarm if alarm_lock else None,
-            repeater = repeats,
-            event = current_event
-            )
-        db.session.add(reminder) # Saves reminder object to current db session
+        web_unlock_lock = 'Web_Unlock' in options
+
+        # Create a new Reminder instance
+        new_reminder = Reminder(
+            date_time=timepoint,
+            buzzer=buzzer_lock,
+            vibration=vibration_lock,
+            web_unlock=web_unlock_lock,
+            alarm=alarm,
+            repeater=repeats,
+            event=current_event
+        )
+
+        # Add the new reminder to the session
+        db.session.add(new_reminder) # Saves reminder object to current db session
+
     try: # Ask for forgiveness
         db.session.commit() # Add floating entries to solid state database
     except Exception as ex: # Generic error message
         db.session.rollback() # Deletes current floating session instead of committing it
         print(f"An error occurred: {ex}") # Not overly familiar with the type of errors that could occur here
-    '''
     # Test block
     print(event_title)
     print(event_description)
@@ -155,7 +162,7 @@ def submit():
     print(reminder_options)
     print(reminder_alarms)
     print(reminder_repeats)
-    '''
+    
     return render_template("index.html")
 
 @app.route('/unlock/<path:key>')

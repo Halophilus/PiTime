@@ -170,13 +170,16 @@ class Speaker:
         intended to be run in a separate thread.
         """
         while self.playing:
-            self.sound.play()
-            start_time = time.time() # Rounds up quantity into one-second counts 
-            while time.time() - start_time < self.sound.get_length(): # For every tenth of a second in the rounded duration
-                time.sleep(0.1)
-                if not self.playing:
-                    break # Breaks loop for abrupt termination
+            try:
+                self.sound.play()
+                start_time = time.time() # Rounds up quantity into one-second counts 
+                while time.time() - start_time < self.sound.get_length(): # For every tenth of a second in the rounded duration
+                    time.sleep(0.1)
+                    if not self.playing:
+                        break # Breaks loop for abrupt termination
+            except Exception as e:
 
+        
     def stop(self):
         """
         Stops the currently playing sound and resets the state.

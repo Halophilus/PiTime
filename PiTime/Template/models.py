@@ -18,9 +18,10 @@ class Reminder(db.Model):
     # Boolean attributes
     buzzer = db.Column(db.Boolean, default = False)
     vibration = db.Column(db.Boolean, default = False)
-    spoken = db.Column(db.Boolean, default = False)
     web_unlock = db.Column(db.Boolean, default = False)
     reminder_lock = db.Column(db.Boolean, default = False)
-    alarm = db.Column(db.String(120))  # String alarm selection
+    alarm = db.Column(db.String(120))  # Indicates urgency of the alarm required for this reminder. Hereafter referred to as 'urgency'
     repeater = db.Column(db.String(50)) # String reminder repeat
     event_id = db.Column(db.Integer, db.ForeignKey('event.id'), nullable=False) # Implicit connection to some event object
+
+

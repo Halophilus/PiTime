@@ -81,9 +81,9 @@ class Vibration: # 5V vibration module driven by a transistor and 3.3V logic
                 if self.vibrating:
                     self.vibrating = False
                     self.thread.join()
-                    # self.buzzer.off()
+                    # self.vibration.off()
             except Exception as e:
-                print(f"Error in Vibration stop method: {e}")
+                print(f"Error in Vibration.stop method: {e}")
 
     def vibrate(self):
         '''
@@ -96,7 +96,7 @@ class Vibration: # 5V vibration module driven by a transistor and 3.3V logic
             time.sleep(1.5)
 
 class Speaker:
-    def __init__(self, urgency):
+    def __init__(self, urgency='None'):
         """
         Initializes the Speaker object.
 
@@ -114,10 +114,14 @@ class Speaker:
         Starts playing a random alarm from the specified urgency level.
         """
         with self.lock:
-            if not self.playing:
-                self.playing = True
-                self.thread = threading.Thread(target=self.play_loop)
-                self.thread.start()
+            if self.urgency != 'None':
+                if not self.playing:
+                    try:
+                        self.playing = True
+                        self.thread = threading.Thread(target=self.play_loop)
+                        self.thread.start()
+                    except Exception as e:
+                        print(f"Error in Speaker.start: {e}")
 
     def play_loop(self):
         """
@@ -125,6 +129,7 @@ class Speaker:
         """
         try:
             alarm_file = self.select_random_alarm()
+            print(alarm_file)
             if alarm_file:
                 self.sound = pygame.mixer.Sound(alarm_file)
                 while self.playing:
@@ -135,17 +140,20 @@ class Speaker:
                         if not self.playing:
                             break 
         except Exception as e:
-            print(f"Error in play_loop: {e}")
+            print(f"Error in Speaker.play_loop: {e}")
 
     def stop(self):
         """
         Stops the currently playing sound.
         """
-        with self.lock:
-            self.sound.stop()
-            self.playing = False
-            if self.thread:
-                self.thread.join()
+        try:
+            with self.lock:
+                self.sound.stop()
+                self.playing = False
+                if self.thread:
+                    self.thread.join()
+        except Exception as e:
+            print(f"Error in Speaker.stop: {e}")
 
     def select_random_alarm(self):
         """
@@ -154,10 +162,13 @@ class Speaker:
         Returns:
         str: The path to the selected alarm file.
         """
-        script_directory = os.path.dirname(os.path.abspath(__file__))
-        alarm_dir = os.path.join(script_directory, 'alarms', self.urgency)
-        if os.path.isdir(alarm_dir):
-            alarm_files = os.listdir(alarm_dir)
-            if alarm_files:
-                return os.path.join(alarm_dir, random.choice(alarm_files))
-        return None
+        try:
+            script_directory = os.path.dirname(os.path.abspath(__file__))
+            alarm_dir = os.path.join(script_directory, 'alarms', self.urgency)
+            if os.path.isdir(alarm_dir):
+                alarm_files = os.listdir(alarm_dir)
+                if alarm_files:
+                    return os.path.join(alarm_dir, random.choice(alarm_files))
+            return None
+        except Exception as e:
+            print(f"Error in Speaker.select_random_alarm: {e}")

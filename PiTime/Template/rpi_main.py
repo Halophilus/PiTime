@@ -5,6 +5,7 @@ import rpi_models
 from flask import Flask
 from flask_sqlalchemy import SQLAlchemy
 from models import db, Event, Reminder
+from rpi_models import Speaker, Buzzer, Vibration
 from time import sleep
 from datetime import datetime
 from dateutil.relativedelta import relativedelta
@@ -13,27 +14,42 @@ app = Flask(__name__)
 app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///alarm-reminder.db'
 db.init_app(app)
 
-global options_dict
-global alarm_trigger
-global current_events_dict
-alarm_trigger = False
-options_dict = {'buzzer':False,
-                'vibration':False,
-                'spoken':False,
-                'web_unlock':False,
-                'alarm':{'None'}}
-current_events_dict = {}
 
-global buzzer_module
-global speaker_module
-
+def initialize_globals():
+    '''
+        Function: Initializes global variables for use in the main script
+            alarm_trigger (bool), True if there is an active alarm, False if not
+            options_dict (dict), current aggregate options to operate control structures that create relevant alarm device objects
+                buzzer (bool), intermittent beeping if True
+                vibration (bool), intermittent vibration if True
+                web_unlock (bool), if True, the alarm requires the user to visit a custom URL to deactivate
+                alarm (set), a set of all alarm urgencies currently triggered
+            current_events_dict (dict)
+                key: event.id (str) ID for each unique event triggered
+                val: tuple
+                    event.title (str), the title of the event
+                    event.description (str), the description of the event
+            current_urgency (str), the current maximum urgency of the triggered alarms, used to keep track of changes in urgency to control whether or not a new Speaker object is declared
+    '''
+    global alarm_trigger, options_dict, current_events_dict, current_urgency
+    alarm_trigger = False
+    options_dict = {'buzzer': False,
+                    'vibration': False,
+                    'web_unlock': False,
+                    'alarm': {'None'}}
+    current_events_dict = {}
+    current_urgency = 'None'
 
 def reminder_looper(original_datetime, repeater):
     '''
         Function: reminder_looper, adds a set amount of time to the reminder time based on repeater value
-        Parameters:
-            original_datetime, datetime
-            repeater, str, from reminder object
+            Repeater values: "Never", "Daily", "Weekly", "Monthly", "Yearly"
+                For each repeater value, the script takes a datetime and adds a corresponding amount of time to it, then returns that datetime object
+        Args:
+            original_datetime (datetime)
+            repeater (str), from reminder object
+        Returns:
+            New datetime postponed by value corresponding to repeater (datetime)
     '''
     time_additions = {
             "Never": relativedelta(),  # No addition
@@ -42,49 +58,119 @@ def reminder_looper(original_datetime, repeater):
             "Monthly": relativedelta(months=1),
             "Yearly": relativedelta(years=1)
         }
+    if not(repeater in list(time_additions.keys())):
+        raise ValueError("Repeater value must be in the legal Repeater set")
+    if type(repeater) != str:
+        raise TypeError("Repeater must be a string")
     addition = time_additions.get(repeater, relativedelta())  # Default to no addition if the string is not found
     return original_datetime + addition
 
-def process_event_reminders():
+def fetch_active_reminders():
     '''
-    Sets up context for Database queries based on current datetime
-        modifies global options dictionary
-        appends events to current events
+        Function: Fetches active reminders from the database, which are described by reminders that have both:
+            Reminder.date_time (datetime) that occurred in the past (Reminder.date_time <= current_time)
+            Reminder.reminder_lock (bool) that indicates the reminder hasn't already been "spent"
+                Until I come up with a means to alter existing reminders, these consist of reminders in Reminder.repeater == 'Never' that have already been triggered
+                Currently, all reminders with non-zero repeaters just have their date_times updated to a future datetime
+        Returns:
+            Query object containing all relevant Reminder objects
+    '''
+    try:
+        current_time = datetime.now()
+        return Reminder.query.join(Event).filter(Reminder.reminder_lock == False)\
+            .filter(Reminder.date_time <= current_time).all()
+    except Exception as e:
+        print(f"An error occurred when fetching reminders, {e}")
+
+def update_reminder(reminder):
+    '''
+        Function: Modifies a given reminder object based on its repeater value, updates the global current_events_dict, and commits changes to the database.
+            The function adjusts the reminder's date_time based on its repeater value using the reminder_looper function. If the repeater is set to "Never", it locks the reminder by setting reminder_lock to True. It also updates the global current_events_dict with the event's title and description linked to this reminder.
+        Args:
+            reminder (Reminder): representing a row in the Reminder table of the database
+    '''
+    try:
+        reminder.date_time = reminder_looper(reminder.date_time, reminder.repeater)
+        if reminder.repeater == "Never":
+            reminder.reminder_lock = True
+        try: # Ask for forgiveness
+            db.session.commit() # Add floating entries to database
+        except Exception as e: # Generic error message
+            db.session.rollback() # Deletes current floating session instead of committing it
+            print(f"An error occurred in committing update_reminder to database for {reminder.id} from event {reminder.event.id} ({reminder.event.title}): {e}")
+    except Exception as e:
+        print(f"An error occurred in update_reminder for {reminder.id} from event {reminder.event.id} ({reminder.event.title}): {e}")
+
+def update_options_dict(reminder):
+    '''
+        Function: adds options from Reminder object to running conglomerate of options for all active alarms
+            'buzzer', 'vibration', 'web_unlock' (bool): aforementioned flags for various alarm functionalities
+            'alarm': a list of all urgencies from currently active alarms
+        Args:
+            reminder (Reminder): representing a row in the Reminder table of the database
     '''
     global options_dict
-    global alarm_trigger
+    try:
+        options_dict['buzzer'] = options_dict['buzzer'] or reminders.buzzer # OR logic makes it so additional True or False calls will only yield True given at least one True assignment
+        options_dict['vibration'] = options_dict['vibration'] or reminders.vibration
+        options_dict['web_unlock'] = options_dict['web_unlock'] or reminders.web_unlock
+        options_dict['alarm'].add(reminders.alarm) # Adds urgency to set so that only original entries are stored
+    except Exception as e:
+        print(f"An error occurred in update_options_dict for {reminder.id} from {reminder.event.id} ({reminder.event.title}): {e}")
+
+def update_current_events_dict(reminder):
+    '''
+        Function: adds the Event object associated with the Reminder object to a running dictionary of events connected to the alarm
+            Relies on event.id for keys so multiple events with repetitive event.title and event.description content get logged separately
+            This dictionary is used to read the current events when the alarm is deactivated
+        Args:
+            reminder (Reminder): representing a row in the Reminder table of the database
+    '''
     global current_events_dict
-    current_time = datetime.now()
-    with app.app_context(): # Manually create app context in the absence of Flask routes
-        active_reminders = Reminder.query.join(Event).filter(Reminder.reminder_lock == False)\
-            .filter(Reminder.date_time <= current_time) # Pull all active + past reminder
-        alarm_trigger = len(active_reminders) > 0 or alarm_trigger or options_dict['web_unlock']
-        for reminders in active_reminders:
-            options_dict['buzzer'] = options_dict['buzzer'] or reminders.buzzer
-            options_dict['vibration'] = options_dict['vibration'] or reminders.vibration
-            options_dict['spoken'] = options_dict['spoken'] or reminders.spoken
-            options_dict['web_unlock'] = options_dict['web_unlock'] or reminders.web_unlock
-            options_dict['alarm'].add(reminders.alarm)
-            current_events_dict[reminders.event.id] = (reminders.event.title, reminders.event.description)
-            reminders.date_time = reminder_looper(reminders.date_time, reminders.repeater)
-            if reminders.repeater == "Never":
-                reminders.reminder_lock = False
-        db.session.commit()
+    try:
+        current_events_dict[reminder.event.id] = (reminder.event.title, reminder.event.description)    
+    except Exception as e:
+        print(f"An error occurred in update_current_events for {reminder.id} from event {reminder.event.id} ({reminder.event.title}): {e}")
+
+def update_urgency():
+    '''
+        Function: checks all current urgencies listed in options_dict['Alarm'] and replaces current_urgency with the new maximal urgency if new urgency is higher. Otherwise does nothing.
+            This is called after every Reminder database query to check if a more urgent reminder has been triggered
+            If a more urgent reminder is present upon starting a new cycle, the control structure in the main loop will instantiate a new Speaker object with the revised urgency  
+    '''
+    global current_urgency, options_dict
+    for urgencies in options_dict['alarm']:
+        if urgency_comparator[urgencies] > urgency_comparator[current_urgency]:
+            current_urgency = urgencies
+
+def process_event_reminders():
+    '''
+        Function: Parses reminder objects using fetch_active_reminders(), update_reminder(), update_options_dict(), update_current_event_dict(), and update_urgency()
+            Pulls active alarms and uses the data from each Reminder to update bookkeeping global variables + update triggered reminder objects
+            Updates alarm_trigger based on results
+    '''
+    global alarm_trigger
+    active_reminders = fetch_active_reminders()
+    for reminder in active_reminders:
+        update_options_dict(reminder)
+        update_current_events_dict(reminder)
+        update_urgency()
+        update_reminder(reminder)
+    alarm_trigger = len(list(active_reminders)) > 0 or alarm_trigger # So process_event_reminders doesn't deactivate the alarm when checking for new events
 
 def reset():
     '''
     Resets global bookkeeping variables to default states
     '''
-    global options_dict
-    global alarm_trigger
-    global current_events_dict
+    global options_dict, alarm_trigger, current_events_dict, current_urgency
     alarm_trigger = False
     options_dict = {'buzzer':False,
                     'vibration':False,
                     'spoken':False,
                     'web_unlock':False,
-                    'alarm':set()} # Only original entries are retained to simplify parsing
+                    'alarm':set('None')} # Only original entries are retained to simplify parsing
     current_events_dict = {}
+    current_urgency = 'None'
 
 def write_to_file(file, val):
     '''
@@ -106,11 +192,15 @@ def get_from_file(file):
     script_directory = os.path.dirname(os.path.abspath(__file__)) # fetches current working directory
     new_path = os.path.join(script_directory, '.unlock', file) # builds a relative path
     with open(new_path, 'r') as alarm_flag:
-        return alarm_flag.read.strip()
+        return str(alarm_flag.read()).strip()
 
 def get_web_unlock():
     '''
+    The web_unlock flag is partially determined by the state of a text file containing either '1' or ''
+    This is because deactivating the web_unlock is performed on the other Flask server by manipulating 'alarm.txt'
     Returns web_unlock flag from file (bool)
+        '1': web_unlock is active
+        '': web_unlock is inactive
     '''
     flag = get_from_file('alarm.txt')
     if bool(flag):
@@ -122,69 +212,129 @@ def set_web_unlock(flag):
     Sets the web unlock flag to be recognized by the Flask server, generates a random value for the web unlock key if flag = True
     if flag = False, then the alarm flag is cleared.
         flag: bool
+    Args:
+        flag (bool), determined by options_dict['web_unlock'], indicates that web unlock has been enabled for this reminder
+    Returns:
+        random_string (str) 32 random characters to be used for the web unlock
     '''
+    global options_dict
     if flag:
         write_to_file("alarm.txt", '1')
         chars = string.ascii_letters + string.digits + string.punctuation
         random_string = ''.join(random.choice(chars) for i in range(32))
         write_to_file("unlock.txt", random_string)
+        return random_string
     else:
         write_to_file("alarm.txt", '')
+        options_dict['web_unlock'] = False
+        return None
+
 
 def speak(speech):
     '''
     Hitherto unresolved text-to-speech application
     '''
-    pass
-
-def play(alarm_set):
-    '''
-    Hitherto unresolved selection from a group of alarms under a certain category
-    ''' 
-    pass
+    print(speech)
 
 def main():
-    global alarm_trigger
-    global options_dict
-    global current_events_dict
-    while True:
-        web_flag = get_web_unlock() # Checks web unlock flag from file
-        if not(alarm_trigger or web_flag): # Only true when both alarm_trigger and web_flag are fasle
-            number_of_items = len(current_events_dict)
-            speak(f"You have {number_of_items} events today") # Bespoke event message
-            for keys in current_events_dict: # Walks through each unique event saved 
-                speak(current_events_dict[keys][0]) # Event title
-                # Some pause between the readings
-                speak(current_events_dict[keys][1]) # Event description
-            reset()
-        sleep(60)
-        process_event_reminders()
-        if options_dict['web_unlock']:
-            set_web_unlock(True)
-        if options_dict['buzzer']:
+    with app.app_context(): # Manually create app context in the absence of Flask routes so that the app doesn't have to be destroyed and recreated for every check
+        initialize_globals()
+        urgency_comparator = {'None' : 0, # Enclosing scope means of quantifying/comparing urgency
+                            'Not at all' : 1,
+                            'Somewhat' : 2,
+                            'Urgent' : 3,
+                            'Very' : 4,
+                            'Extremely' : 5}
+
+        while True:
+            sleep(60)
+            process_event_reminders()
+                while alarm_trigger or options_dict['web_unlock']:
+                    if options_dict['web_unlock']:
+                        web_unlock_key = set_web_unlock(True) # Generates a new web_unlock key every 30 seconds
+                    sleep(30)
+                    if not get_web_unlock():
+                        set_web_unlock(False)
+                    if current_urgency != 'None':
+                        if not speaker:
+                            speaker = Speaker(current_urgency)
+                            speaker.start()
+                        if urgency_comparator[current_urgency] > urgency_comparator[speaker.urgency]:
+                            speaker.stop()
+                            speaker = Speaker(current_urgency)
+                            speaker.start()
+                            process_event_reminders()
+                        if options_dict['buzzer']:
+                            if not buzzer:
+                                buzzer = Buzzer()
+                            buzzer.start()
+                        else:
+                            if buzzer:
+                                buzzer.stop()
+                        if options_dict['vibration']:
+                            if not vibration:
+                                vibration = Vibration()
+                            vibration.start()
+                        else:
+                            if vibration:
+                                vibration.stop()
+                        process_event_reminders()
+                finally:
+                    number_of_events = len(current_events_dict)
+                    speak(f'You have {number_of_events} events currently')
+                    for keys in current_events_dict:
+                        speak(f"Event number {keys}")
+                        speak(current_events_dict[keys][0])
+                        speak(current_events_dict[keys][1])
+                        sleep(3)
+                    reset()
+
+
+
+
+            web_flag = get_web_unlock() # Checks web unlock flag from file
+            if not(alarm_trigger or web_flag): # Only true when both alarm_trigger and web_flag are false
+                number_of_items = len(current_events_dict)
+                speak(f"You have {number_of_items} events today") # Bespoke event message
+                for keys in current_events_dict: # Walks through each unique event saved 
+                    speak(current_events_dict[keys][0]) # Event title
+                    # Some pause between the readings
+                    speak(current_events_dict[keys][1]) # Event description
+                reset()
+            sleep(5)
+            process_event_reminders()
+            if current_urgency != 'None':
+                if not speaker:
+                    speaker = Speaker(current_urgency)
+                    speaker.start()
+                if urgency_comparator[current_urgency] > urgency_comparator[speaker.urgency]:
+                    speaker.stop()
+                    speaker = Speaker(current_urgency)
+                    speaker.start()
+            else:
+                if speaker:
+                    speaker.stop()
             
-            print("A BUZZER SOUNDS")
-        if options_dict['vibration']:
-            print("THE DEVICE VIBRATES")
-        if options_dict['web_unlock']:
+            if options_dict['web_unlock']:
+                set_web_unlock(True)
 
-        
-        sleep(60)
+            if options_dict['buzzer']:
+                if not buzzer:
+                    buzzer = Buzzer()
+                buzzer.start()
+            else:
+                if buzzer:
+                    buzzer.stop()
 
+            if options_dict['vibration']:
+                if not vibration:
+                    vibration = Vibration()
+                vibration.start()
+                print("THE ALARM IS VIBRATING")
+            else:
+                if vibration:
+                    vibration.stop()
+            print("Cycle processed")
 
-            
-        '''
-        Unique variables needed:
-            Alarm_On, bool, turns on when an alarm is triggered, 
-        '''
-        ## PULL LIST OF REMINDERS ##
-            # DATETIME BEFORE CURRENT DATETIME
-            # REMINDER_LOCK
-        ## FOR ALL TRIGGERED REMINDERS ##
-            # reminder_looper CALLED
-            # ORIGINAL DATETIME REPLACED
-            # IF repeater == "Never"
-                # SET reminder_lock TO False
-            ## FOR EVERY OPTION ##
-
-        ## COMPILE LIST OF OPTIONS ##
+if __name__ == '__main__':
+    set_web_unlock(False)
