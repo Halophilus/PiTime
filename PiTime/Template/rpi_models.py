@@ -3,14 +3,16 @@ import random
 import time
 import pygame
 import threading
-# import gpiozero
+# from gpiozero import Button, Buzzer
 
 class Buzzer: # active piezoelectric buzzer for droning alarm sound
     def __init__(self, pin):
         '''
         Initializes Buzzer object
-        Utilizes gpiozero driver for an active piezoelectric buzzer to add a beeping sound to the alarm
-        Utilizes threading to permit background control and a lock for thread safety
+            Utilizes gpiozero driver for an active piezoelectric buzzer to add a beeping sound to the alarm
+            Utilizes threading to permit background control and a lock for thread safety
+        Args:
+            pin (int), GPIO pin number assigned to the vibration module        
         '''
         self.buzzer = pin
         print(f"BUZZER DECLARED AT PIN {pin}")
@@ -19,6 +21,10 @@ class Buzzer: # active piezoelectric buzzer for droning alarm sound
         self.lock = threading.Lock()
 
     def start(self):
+        '''
+        Starts buzzing sequence, self.buzz in its own thread
+            Initializes thread then starts self.vibrate function
+        '''
         with self.lock:
             try:
                 if not self.buzzing:
@@ -29,6 +35,10 @@ class Buzzer: # active piezoelectric buzzer for droning alarm sound
                 print(f"Error in Buzzer start method: {e}")
 
     def stop(self):
+        '''
+        Stops buzzing sequence
+            Closes thread and takes down buzzing flag
+        '''        
         with self.lock:
             try:
                 if self.buzzing:
@@ -49,8 +59,10 @@ class Vibration: # 5V vibration module driven by a transistor and 3.3V logic
     def __init__(self, pin):
         '''
         Initializes the Vibration object
-        Sets up a gpiozero LED instance that triggers a high power mosfet to activate a 5V ERM vibration motor
-        Utilizes threading to permit background control and a lock for thread safety
+            Sets up a gpiozero LED instance that triggers a high power mosfet to activate a 5V ERM vibration motor
+            Utilizes threading to permit background control and a lock for thread safety
+        Args:
+            pin (int), GPIO pin number assigned to the vibration module
         '''
         self.vibration = pin #gpiozero.LED(pin)
         print(f"VIBRATION DECLARED AT PIN {pin}")
@@ -61,7 +73,7 @@ class Vibration: # 5V vibration module driven by a transistor and 3.3V logic
     def start(self):
         '''
         Starts vibration sequence, self.vibrate in its own thread
-        Initializes thread then starts function
+            Initializes thread then starts self.vibrate function
         '''
         with self.lock:
             try:
@@ -71,10 +83,11 @@ class Vibration: # 5V vibration module driven by a transistor and 3.3V logic
                     self.thread.start()
             except Exception as e:
                 print(f"Error in Vibration start method: {e}")
+
     def stop(self):
         '''
         Stops vibration sequence
-        Closes thread and takes down vibrating flag
+            Closes thread and takes down vibrating flag
         '''
         with self.lock:
             try:
@@ -99,9 +112,8 @@ class Speaker:
     def __init__(self, urgency='None'):
         """
         Initializes the Speaker object.
-
-        Args:
-        urgency (str): The urgency level for which to select a random alarm.
+        Args
+            urgency (str): The urgency level for which to select a random alarm.
         """
         pygame.mixer.init()
         self.playing = False
@@ -172,3 +184,4 @@ class Speaker:
             return None
         except Exception as e:
             print(f"Error in Speaker.select_random_alarm: {e}")
+

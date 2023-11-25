@@ -3,12 +3,31 @@ from flask_sqlalchemy import SQLAlchemy
 db = SQLAlchemy()
 
 class Event(db.Model): # Objects are not being stored in memory and thus do not inherit 'self'
+    '''
+    Event object based on database model (SQLite), given its own table
+        Event.id (int), primary key keeping distinguishing distinct objects, handled by SQLite to avoid redundant Event objects
+        Event.title (str), the event title
+        Event.description (str), the event description
+        Event.reminders (key), backreferences all connected Event objects which is linked by the Event.id value
+    '''
     id = db.Column(db.Integer, primary_key=True)
     title = db.Column(db.String(120), nullable=False)
     description = db.Column(db.String(500))
+    # event_lock = db.Column(db.Boolean, default = False)
+    # image_path
     reminders = db.relationship('Reminder', backref='event', lazy='dynamic') # Enabeles a 1 event to many reminders configuration
 
 class Reminder(db.Model):
+    '''
+    Reminder object based on database model (SQLite), given its own table
+        Reminder.id (int), primary key distringuishing distinct Reminder objects
+        Reminder.date_time (datetime), date and time of Reminder object trigger
+        Reminder.buzzer (bool), flag for buzzer activity
+        Reminder.vibration (bool), flag for vibration activity 
+        Reminder.alarm (str), selected alarm urgency
+        Reminder.repeater (str), the frequency with which an alarm is set to repeat, date_time adjusted at each trigger by interval repeater
+        Reminder.event_id (int), the foreign key from the associated event object (event.id)
+    '''
     # Uniquely identify record in the database, set internally
     id = db.Column(db.Integer, primary_key=True)
 

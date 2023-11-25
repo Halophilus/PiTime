@@ -1,7 +1,4 @@
-import os
-import random
-import string
-import rpi_models
+import os, random, string
 from flask import Flask
 from flask_sqlalchemy import SQLAlchemy
 from models import db, Event, Reminder
@@ -14,6 +11,9 @@ app = Flask(__name__)
 app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///alarm-reminder.db'
 db.init_app(app)
 
+def snooze_button():
+    global alarm_trigger
+    alarm_trigger = False
 
 def initialize_globals():
     '''
@@ -53,6 +53,7 @@ def reminder_looper(original_datetime, repeater):
     '''
     time_additions = {
             "Never": relativedelta(),  # No addition
+            "Hourly": relativedelta(hours=1),
             "Daily": relativedelta(days=1),
             "Weekly": relativedelta(weeks=1),
             "Monthly": relativedelta(months=1),
@@ -111,10 +112,11 @@ def update_options_dict(reminder):
     '''
     global options_dict
     try:
-        options_dict['buzzer'] = options_dict['buzzer'] or reminders.buzzer # OR logic makes it so additional True or False calls will only yield True given at least one True assignment
-        options_dict['vibration'] = options_dict['vibration'] or reminders.vibration
-        options_dict['web_unlock'] = options_dict['web_unlock'] or reminders.web_unlock
-        options_dict['alarm'].add(reminders.alarm) # Adds urgency to set so that only original entries are stored
+        options_dict['buzzer'] = options_dict['buzzer'] or reminder.buzzer # OR logic makes it so additional True or False calls will only yield True given at least one True assignment
+        options_dict['vibration'] = options_dict['vibration'] or reminder.vibration
+        options_dict['web_unlock'] = options_dict['web_unlock'] or reminder.web_unlock
+        set_web_unlock(options_dict['web_unlock'])
+        options_dict['alarm'].add(reminder.alarm) # Adds urgency to set so that only original entries are stored
     except Exception as e:
         print(f"An error occurred in update_options_dict for {reminder.id} from {reminder.event.id} ({reminder.event.title}): {e}")
 
@@ -132,29 +134,33 @@ def update_current_events_dict(reminder):
     except Exception as e:
         print(f"An error occurred in update_current_events for {reminder.id} from event {reminder.event.id} ({reminder.event.title}): {e}")
 
-def update_urgency():
+def update_urgency(urgency_comparator):
     '''
         Function: checks all current urgencies listed in options_dict['Alarm'] and replaces current_urgency with the new maximal urgency if new urgency is higher. Otherwise does nothing.
             This is called after every Reminder database query to check if a more urgent reminder has been triggered
-            If a more urgent reminder is present upon starting a new cycle, the control structure in the main loop will instantiate a new Speaker object with the revised urgency  
+            If a more urgent reminder is present upon starting a new cycle, the control structure in the main loop will instantiate a new Speaker object with the revised urgency
+        Args:
+            urgency_comparator (dict), associates urgency values with a finite score  
     '''
     global current_urgency, options_dict
     for urgencies in options_dict['alarm']:
         if urgency_comparator[urgencies] > urgency_comparator[current_urgency]:
             current_urgency = urgencies
 
-def process_event_reminders():
+def process_event_reminders(urgency_comparator):
     '''
         Function: Parses reminder objects using fetch_active_reminders(), update_reminder(), update_options_dict(), update_current_event_dict(), and update_urgency()
             Pulls active alarms and uses the data from each Reminder to update bookkeeping global variables + update triggered reminder objects
             Updates alarm_trigger based on results
+        Args:
+            urgency_comparator (dict), associates urgency values with a finite score
     '''
     global alarm_trigger
     active_reminders = fetch_active_reminders()
     for reminder in active_reminders:
         update_options_dict(reminder)
         update_current_events_dict(reminder)
-        update_urgency()
+        update_urgency(urgency_comparator)
         update_reminder(reminder)
     alarm_trigger = len(list(active_reminders)) > 0 or alarm_trigger # So process_event_reminders doesn't deactivate the alarm when checking for new events
 
@@ -168,7 +174,7 @@ def reset():
                     'vibration':False,
                     'spoken':False,
                     'web_unlock':False,
-                    'alarm':set('None')} # Only original entries are retained to simplify parsing
+                    'alarm':{'None'}} # Only original entries are retained to simplify parsing
     current_events_dict = {}
     current_urgency = 'None'
 
@@ -245,96 +251,50 @@ def main():
                             'Urgent' : 3,
                             'Very' : 4,
                             'Extremely' : 5}
-
+        buzzer = speaker = vibration = None
         while True:
-            sleep(60)
-            process_event_reminders()
-                while alarm_trigger or options_dict['web_unlock']:
-                    if options_dict['web_unlock']:
-                        web_unlock_key = set_web_unlock(True) # Generates a new web_unlock key every 30 seconds
-                    sleep(30)
-                    if not get_web_unlock():
-                        set_web_unlock(False)
-                    if current_urgency != 'None':
-                        if not speaker:
-                            speaker = Speaker(current_urgency)
-                            speaker.start()
-                        if urgency_comparator[current_urgency] > urgency_comparator[speaker.urgency]:
-                            speaker.stop()
-                            speaker = Speaker(current_urgency)
-                            speaker.start()
-                            process_event_reminders()
-                        if options_dict['buzzer']:
-                            if not buzzer:
-                                buzzer = Buzzer()
-                            buzzer.start()
-                        else:
-                            if buzzer:
-                                buzzer.stop()
-                        if options_dict['vibration']:
-                            if not vibration:
-                                vibration = Vibration()
-                            vibration.start()
-                        else:
-                            if vibration:
-                                vibration.stop()
+            process_event_reminders(urgency_comparator)
+            while alarm_trigger or options_dict['web_unlock']:               
+                if not get_web_unlock():
+                    set_web_unlock(False)
+                if current_urgency != 'None':
+                    if not speaker:
+                        speaker = Speaker(current_urgency)
+                        speaker.start()
+                    if urgency_comparator[current_urgency] > urgency_comparator[speaker.urgency]:
+                        speaker.stop()
+                        speaker = Speaker(current_urgency)
+                        speaker.start()
                         process_event_reminders()
-                finally:
-                    number_of_events = len(current_events_dict)
-                    speak(f'You have {number_of_events} events currently')
-                    for keys in current_events_dict:
-                        speak(f"Event number {keys}")
-                        speak(current_events_dict[keys][0])
-                        speak(current_events_dict[keys][1])
-                        sleep(3)
-                    reset()
-
-
-
-
-            web_flag = get_web_unlock() # Checks web unlock flag from file
-            if not(alarm_trigger or web_flag): # Only true when both alarm_trigger and web_flag are false
-                number_of_items = len(current_events_dict)
-                speak(f"You have {number_of_items} events today") # Bespoke event message
-                for keys in current_events_dict: # Walks through each unique event saved 
-                    speak(current_events_dict[keys][0]) # Event title
-                    # Some pause between the readings
-                    speak(current_events_dict[keys][1]) # Event description
+                if options_dict['buzzer']:
+                    if not buzzer:
+                        buzzer = Buzzer(1)
+                    buzzer.start()
+                else:
+                    if buzzer:
+                        buzzer.stop()
+                if options_dict['vibration']:
+                    if not vibration:
+                        vibration = Vibration(1)
+                    vibration.start()
+                else:
+                    if vibration:
+                        vibration.stop()
+                if options_dict['web_unlock']:
+                    web_unlock_key = set_web_unlock(True) # Generates a new web_unlock key every 30 seconds
+                    print(web_unlock_key)
+                    process_event_reminders(urgency_comparator)
+                sleep(30)
+            else:
+                number_of_events = len(current_events_dict)
+                speak(f'You have {number_of_events} events currently')
+                for keys in current_events_dict:
+                    speak(f"Event number {keys}")
+                    speak(current_events_dict[keys][0])
+                    speak(current_events_dict[keys][1])
+                    sleep(3)
                 reset()
-            sleep(5)
-            process_event_reminders()
-            if current_urgency != 'None':
-                if not speaker:
-                    speaker = Speaker(current_urgency)
-                    speaker.start()
-                if urgency_comparator[current_urgency] > urgency_comparator[speaker.urgency]:
-                    speaker.stop()
-                    speaker = Speaker(current_urgency)
-                    speaker.start()
-            else:
-                if speaker:
-                    speaker.stop()
-            
-            if options_dict['web_unlock']:
-                set_web_unlock(True)
-
-            if options_dict['buzzer']:
-                if not buzzer:
-                    buzzer = Buzzer()
-                buzzer.start()
-            else:
-                if buzzer:
-                    buzzer.stop()
-
-            if options_dict['vibration']:
-                if not vibration:
-                    vibration = Vibration()
-                vibration.start()
-                print("THE ALARM IS VIBRATING")
-            else:
-                if vibration:
-                    vibration.stop()
-            print("Cycle processed")
+            sleep(60)
 
 if __name__ == '__main__':
-    set_web_unlock(False)
+    main()

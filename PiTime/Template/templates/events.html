@@ -1,0 +1,74 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Event and Reminder Management</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+        }
+        .event-container {
+            border-bottom: 1px solid black;
+            padding: 10px;
+            margin-bottom: 20px;
+        }
+        .reminder {
+            margin-left: 20px;
+        }
+        .grayed-out {
+            color: gray;
+        }
+        .nav-bar {
+            background-color: white;
+            padding: 10px;
+            text-align: center;
+            border-bottom: 1px solid black;
+        }
+        .nav-bar a {
+            color: blue;
+            text-decoration: none;
+            margin-right: 20px;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="nav-bar">
+        <!-- Submit Event Link -->
+        <div>
+            <a href="/">Submit Event</a>
+        </div>
+        
+        <!-- Sort Links -->
+        <div style="font-size: 0.8em; margin-top: 10px;">
+            <a href="{{ url_for('events', sort='asc') }}">Sort Ascending</a>
+            <a href="{{ url_for('events', sort='desc') }}">Sort Descending</a>
+        </div>
+    </div>
+
+    <!-- Events Section -->
+    <div>
+        {% for event in events %}
+            <div class="event-container {{ 'grayed-out' if event.all_locked else '' }}">
+                <!-- Event Title as a Link -->
+                <a href="/event/{{ event.id }}">
+                    <h2>{{ event.title }}</h2>
+                </a>
+                <p>{{ event.description }}</p>
+
+                <!-- Display reminders for this event -->
+                {% for reminder in event.reminders %}
+                    <div class="reminder {% if reminder.reminder_lock %}grayed-out{% endif %}">
+                        <p>Reminder: {{ reminder.date_time }} - Urgency: {{ reminder.alarm }} - Repeats: {{ reminder.repeater }}</p>
+                    </div>
+                {% endfor %}
+                <a href="/edit-event/{{ event.id }}" class="edit-btn">Edit Event</a>
+                <a href="/delete-event/{{ event.id }}" class="delete-btn">Delete Event</a> 
+            </div>
+        {% endfor %}
+    </div>
+
+    <script>
+    </script>
+
+</body>
+</html>
