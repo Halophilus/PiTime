@@ -3,13 +3,16 @@
 <head>
     <title>Event and Reminder Management</title>
     <style>
-        body {
-            font-family: Arial, sans-serif;
-        }
         .event-container {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
             border-bottom: 1px solid black;
             padding: 10px;
-            margin-bottom: 20px;
+            margin-bottom: 10px;
+        }
+        .event-details {
+            width: 80%; /* Adjust as needed */
         }
         .reminder {
             margin-left: 20px;
@@ -18,15 +21,18 @@
             color: gray;
         }
         .nav-bar {
-            background-color: white;
-            padding: 10px;
             text-align: center;
-            border-bottom: 1px solid black;
+            margin-bottom: 10px;
         }
         .nav-bar a {
-            color: blue;
+            margin: 0 10px;
             text-decoration: none;
-            margin-right: 20px;
+            color: #007bff;
+        }
+        .event-image img {
+            max-width: 300px;
+            max-height: 300px;
+            object-fit: cover; /* Ensures the image is cropped to fit */
         }
     </style>
 </head>
@@ -43,31 +49,40 @@
             <a href="{{ url_for('events', sort='asc') }}">Sort Ascending</a>
             <a href="{{ url_for('events', sort='desc') }}">Sort Descending</a>
         </div>
+        <hr>
     </div>
 
     <!-- Events Section -->
     <div>
         {% for event in events %}
             <div class="event-container {{ 'grayed-out' if event.all_locked else '' }}">
-                <!-- Event Title as a Link -->
-                <a href="/event/{{ event.id }}">
-                    <h2>{{ event.title }}</h2>
-                </a>
-                <p>{{ event.description }}</p>
+                <!-- Event Details -->
+                <div class="event-details">
+                    <h1>{{ event.title }}</h1>
+                    <p>{{ event.description }}</p>
 
-                <!-- Display reminders for this event -->
-                {% for reminder in event.reminders %}
-                    <div class="reminder {% if reminder.reminder_lock %}grayed-out{% endif %}">
-                        <p>Reminder: {{ reminder.date_time }} - Urgency: {{ reminder.alarm }} - Repeats: {{ reminder.repeater }}</p>
+                    <!-- Display reminders for this event -->
+                    {% for reminder in event.reminders %}
+                        <div class="reminder {% if reminder.reminder_lock %}grayed-out{% endif %}">
+                            <p>Reminder: {{ reminder.date_time }} - Urgency: {{ reminder.alarm }} - Repeats: {{ reminder.repeater }}</p>
+                        </div>
+                    {% endfor %}
+                    <a href="/edit-event/{{ event.id }}" class="edit-btn">Edit Event</a>
+                    <a href="/delete-event/{{ event.id }}" class="delete-btn">Delete Event</a>
+                </div>
+    
+                <!-- Event Image -->
+                {% if event.image_path %}
+                    <div class="event-image">
+                        <img src="{{ url_for('static', filename=event.image_path) }}" alt="Test Image">
                     </div>
-                {% endfor %}
-                <a href="/edit-event/{{ event.id }}" class="edit-btn">Edit Event</a>
-                <a href="/delete-event/{{ event.id }}" class="delete-btn">Delete Event</a> 
+                {% endif %}
             </div>
         {% endfor %}
     </div>
 
     <script>
+        // Add any necessary JavaScript here
     </script>
 
 </body>

@@ -1,12 +1,13 @@
 from flask import Flask, render_template, request, redirect, url_for, flash, abort, request
 from datetime import datetime
-import re
-import os
+import re, os
+from glob import glob
 from models import db, Event, Reminder
-from werkzeug.utils import secure_filename
 
 app = Flask(__name__, template_folder=os.path.join(os.path.dirname(os.path.abspath(__file__)), 'templates'))
-image_folder = os.path.join(app.root_path, 'images')
+
+
+image_folder = os.path.join(app.root_path, 'static')
 
 if not os.path.exists(image_folder):
     os.makedirs(image_folder)
@@ -26,6 +27,44 @@ with app.app_context(): # creates a background environment to keep track of appl
 @app.route("/") # When accessing the root website, which shows the alarm submission form
 def index():
     return render_template("index.html")
+
+@app.route('/submit', methods=['POST']) # HTTP verb called for sending data to a server when host/submit URL is called
+def submit():
+    '''
+    Uses functions parse_form_data and add_event_reminders to convert user input into Event and Reminder objects
+    '''
+    event_title, event_description, reminders = parse_form_data(request.form)
+    
+    reminder_dates = [reminder['date'] for reminder in reminders]
+    reminder_times = [reminder['time'] for reminder in reminders]
+
+    valid, error_messages = validate_reminders(reminder_dates, reminder_times) # Error handling for user input problems
+
+    if not valid:
+        for message in error_messages:
+            flash(message)
+            return redirect(url_for('index'))
+
+    try:
+        event_id = add_event_and_reminders(event_title, event_description, reminders)
+        flash(f"{event_title} added successfully!")
+
+        if 'event_image' in request.files:
+            file = request.files['event_image']
+            if file.filename != '':
+                allowed_extensions = {'png', 'jpg', 'jpeg', 'gif'}
+                if not('.' in file.filename and file.filename.rsplit('.', 1)[1].lower() in allowed_extensions):
+                    flash("File must be an image of the extension png, jpg, jpeg, or gif.")
+                else:
+                    _, file_extension = os.path.splitext(file.filename)
+                    new_filename = f"{event_id}{file_extension}"
+                    file_path = os.path.join(app.config['UPLOAD_FOLDER'], new_filename)
+                    file.save(file_path)
+
+        return redirect(url_for('index'))
+    except Exception as ex:
+        flash("An error occurred: " + str(ex))
+        return redirect(url_for('index'))
 
 def validate_reminders(reminder_dates, reminder_times):
     '''
@@ -160,46 +199,6 @@ def add_event_and_reminders(event_title, event_description, reminders_data):
     
     return current_event.id
 
-@app.route('/submit', methods=['POST']) # HTTP verb called for sending data to a server when host/submit URL is called
-def submit():
-    '''
-    Uses functions parse_form_data and add_event_reminders to convert user input into Event and Reminder objects
-    '''
-    event_title, event_description, reminders = parse_form_data(request.form)
-    
-    reminder_dates = []
-    reminder_times = []
-    for reminder in reminders:
-        reminder_dates.append(reminder['date'])
-        reminder_times.append(reminder['time'])
-    valid, error_messages = validate_reminders(reminder_dates, reminder_times) # Error handling for user input problems
-
-    if not valid:
-        for message in error_messages:
-            flash(message)
-            return redirect(url_for('index'))
-
-    try:
-        event_id = add_event_and_reminders(event_title, event_description, reminders)
-        flash(f"{event_title} added successfully!")
-
-        if 'event_image' in request.files:
-            file = request.files['event_image']
-            if file.filename != '':
-                allowed_extensions = {'png', 'jpg', 'jpeg', 'gif'}
-                if not('.' in file.filename and file.filename.rsplit('.', 1)[1].lower() in allowed_extensions):
-                    flash("File must be an image of the extension png, jpg, jpeg, or gif.")
-                else:
-                    _, file_extension = os.path.splitext(file.filename)
-                    new_filename = f"{event_id}{file_extension}"
-                    file_path = os.path.join(app.config['UPLOAD_FOLDER'], new_filename)
-                    file.save(file_path)
-
-        return redirect(url_for('index'))
-    except Exception as ex:
-        flash("An error occurred: " + str(ex))
-        return redirect(url_for('index'))
-
 @app.route('/unlock/<path:key>')
 def key_check(key):
     '''
@@ -242,31 +241,66 @@ def read_unlock_val(file):
 def events():
     sort_order = request.args.get('sort', 'desc')  # Default sort order is descending
 
-    events = Event.query.all()
+    events = Event.query.filter_by(event_lock = False).all() # Pull all events from the database that haven't been deactivated
+    print(events)
+    events_with_images = []
     events_with_reminders = []
-
-    for event in events:
-        reminders = Reminder.query.filter_by(event_id=event.id).all()
-        all_locked = all(reminder.reminder_lock for reminder in reminders)
-        event_data = {
-            'id': event.id,
-            'title': event.title,
-            'description': event.description,
-            'reminders': reminders,
-            'all_locked': all_locked
-        }
-        events_with_reminders.append(event_data)
-
-    # Sort events by their most recent reminder. My friend Evan helped me with this part I'll be honest I have no idea how it works
+    try:
+        events_with_reminders = relevant_events_filter(events) 
+        events_with_images = add_image_filepath_to_event_dictionary(events_with_reminders)
+        print(events_with_images)
+    except TypeError as ex:
+        print("No events have been created yet")
+    # Sort events by their most recent reminder. My friend Ethan helped me with this part I'll be honest I have no idea how it works
     if sort_order == 'desc':
-        events_with_reminders.sort(key=lambda e: max(r.date_time for r in e['reminders']), reverse=True)
+        events_with_images.sort(key=lambda e: max(r.date_time for r in e['reminders']), reverse=True)
     else:
-        events_with_reminders.sort(key=lambda e: min(r.date_time for r in e['reminders']))
+        events_with_images.sort(key=lambda e: min(r.date_time for r in e['reminders']))
 
-    return render_template('events.html', events=events_with_reminders, sort_order=sort_order)
+    return render_template('events.html', events=events_with_images, sort_order=sort_order)
 
+def add_image_filepath_to_event_dictionary(events_with_reminders):
+    '''
+        Function: The Event object lacks an attribute that associates the object with an image filepath
+        Args:
+            events_with_reminders (list): contains a series of dictionaries containing the event data for all relevant objects to be displayed
+        Returns:
+            events_with_reminders (list): A modified list containing file paths when relevant, default image is None
+    '''
+    for event in events_with_reminders:
+        event['image_path'] = None
+        for ext in ['png', 'jpg', 'jpeg', 'gif']:
+            possible_path = os.path.join('static', f"{event['id']}.{ext}")
+            full_path = os.path.join(app.root_path, possible_path)
+            if os.path.isfile(full_path):
+                event['image_path'] = f"{event['id']}.{ext}"
+                break
+    return events_with_reminders
 
-
+def relevant_events_filter(events_query):
+    '''
+        Function: Takes an Event Query object and filters out deactivated Event objects, and Events with no reminders parsing the data into a list of dictionaries for interpretation at the scripting level
+        Args:
+            events_query (Query), a query containing Event instances
+        Returns:
+            events_with_reminders (list), a list of dictionaries containing all the data to be handled by the HTML form
+    '''
+    events_with_reminders = []
+    for event in events_query:
+        try:
+            reminders = Reminder.query.filter_by(event_id=event.id).all()
+            all_locked = all(reminder.reminder_lock for reminder in reminders) # If all the reminders are spent, tested using a tuple comprehension and the all function
+            event_data = {
+                'id': event.id,
+                'title': event.title,
+                'description': event.description,
+                'reminders': reminders, # These objects can now be readily queries 
+                'all_locked': all_locked # This is used to determine whether or not an entry will be grayed out
+            }
+            events_with_reminders.append(event_data)
+        except ValueError as e:
+            print(f"No reminders associated with this event, {e}")
+    return events_with_reminders
 
 if __name__ == "__main__":
     app.run(debug=True)

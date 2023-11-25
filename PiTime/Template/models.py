@@ -13,8 +13,7 @@ class Event(db.Model): # Objects are not being stored in memory and thus do not 
     id = db.Column(db.Integer, primary_key=True)
     title = db.Column(db.String(120), nullable=False)
     description = db.Column(db.String(500))
-    # event_lock = db.Column(db.Boolean, default = False)
-    # image_path
+    event_lock = db.Column(db.Boolean, default = False)
     reminders = db.relationship('Reminder', backref='event', lazy='dynamic') # Enabeles a 1 event to many reminders configuration
 
 class Reminder(db.Model):
