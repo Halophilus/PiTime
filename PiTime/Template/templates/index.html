@@ -1,10 +1,10 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <title>Alarm Clock Form</title>
+    <title>Event and Reminder Input</title>
     <style>
         .form-group {
-            display: block;
+            display: block; /* starts on a new line */
             margin-bottom: 10px;
         }
 
@@ -12,7 +12,7 @@
             display: block;
         }
 
-        .form-group input[type="text"],
+        .form-group input[type="text"], /* Text inputs, text areas, and drop down menus */
         .form-group textarea,
         .form-group select {
             width: 100%;
@@ -24,7 +24,7 @@
             align-items: center;
         }
 
-        .form-row label {
+        .form-row label { /* equal spacing between labels and checkboxes */
             flex: 1;
         }
 
@@ -32,40 +32,45 @@
             flex: 1;
         }
 
-        .reminder {
+        .reminder { /* gray accented border separating each reminder from each other */
             border-top: 1px solid #ccc;
             padding-top: 10px;
             margin-top: 10px;
         }
-        .top-nav {
+        .top-nav { /* Nav bar */
             text-align: center;
             margin-bottom: 20px;
         }
 
-        .top-nav a {
+        .top-nav a { /* Nav bar links or associations */
             margin: 0 10px;
             text-decoration: none;
             color: #007bff;
         }
 
-        .top-nav hr {
+        .top-nav hr { /* Adds some space above the bar between the text and the divider */
             margin-top: 10px;
         }
     </style>
     <script>
+        // Every 'name' value in this form represents a key value in the ImmutableMultiDict form passed to the Flask server upon POST and all processing is based on that
+        // Initialize value to zero
         var reminderCount = 0;
-
+        // Called every time a new reminder field is added, adds baseline options for reminder
         function addReminder() {
+            // Defines the container in which the reminder element is to appear
             var reminderContainer = document.getElementById("reminder-container");
             var reminderDiv = document.createElement("div");
+            // adds the reminder container
             reminderDiv.classList.add("reminder");
 
-            // Add time input
+            // Add time input element, requires that it be filled out in order to submit
             var timeInput = document.createElement("input");
             timeInput.type = "time";
             timeInput.name = "reminder_time[]";
             timeInput.required = true;
-
+            
+            // Creates a label element to indicate purpose of time field
             var timeLabel = document.createElement("label");
             timeLabel.textContent = "Time:";
             reminderDiv.appendChild(timeLabel);
@@ -77,26 +82,29 @@
             dateInput.name = "reminder_date[]";
             dateInput.required = true;
 
+            // Add date label element
             var dateLabel = document.createElement("label");
             dateLabel.textContent = "Date:";
             reminderDiv.appendChild(dateLabel);
             reminderDiv.appendChild(dateInput);
+            
+            // Creates drop-down selection for repeater selection for every possible repeater value
             var repeatSelect = document.createElement("select");
-            repeatSelect.name = "reminder_repeats[" + reminderCount + "]"; // Update the name to include the reminder index
-
+            repeatSelect.name = "reminder_repeats[" + reminderCount + "]"; // Update the name to include the reminder index for this value
             var repeatOptions = ["Never", "Hourly", "Daily", "Weekly", "Monthly", "Yearly"];
+            // Loops through list of repeater options and adds them as an element to the drop-down, Never being the first making it the default
             repeatOptions.forEach(function(repeatOption) {
                 var option = document.createElement("option");
-                option.value = repeatOption;
-                option.textContent = repeatOption;
+                option.value = repeatOption; // The output string value is the same as
+                option.textContent = repeatOption; // The apparent string in the drop-down
                 repeatSelect.appendChild(option);
             });
-
+            // Labels for repeater selection
             var repeatLabel = document.createElement("label");
             repeatLabel.textContent = "Repeats:";
             reminderDiv.appendChild(repeatLabel);
             reminderDiv.appendChild(repeatSelect);
-            // Add checkboxes for options
+            // Add checkboxes for each possible option, orders them in vertical arrangement
             var options = ["Buzzer", "Vibration", "Web_Unlock", "Alarm"];
             for (var i = 0; i < options.length; i++) {
                 var option = options[i];
@@ -120,22 +128,23 @@
                     var alarmSelect = document.createElement("select");
                     alarmSelect.name = "reminder_alarm[" + reminderCount + "]";
                     alarmSelect.style.display = "none";
-
+                    // A drop down menu is generated showing all of the possible alarm urgencies
                     var alarms = ["Not at all", "Somewhat", "Urgent", "Very", "Extremely"];
                     for (var j = 0; j < alarms.length; j++) {
                         var alarm = alarms[j];
                         var alarmElement = document.createElement("option");
-                        alarmElement.value = alarm;
-                        alarmElement.textContent = alarm;
+                        alarmElement.value = alarm; // Output value
+                        alarmElement.textContent = alarm; // Visible string
                         alarmSelect.appendChild(alarmElement);
                     }
-
+                    
                     var alarmLabel = document.createElement("label");
                     alarmLabel.textContent = "Select Alarm:";
                     alarmLabel.style.display = "none";
                     reminderDiv.appendChild(alarmLabel);
                     reminderDiv.appendChild(alarmSelect);
 
+                    // Alters appearance of the page if the alarm option is selected
                     optionInput.addEventListener("change", function() {
                         if (this.checked && this.value === "Alarm") {
                             alarmSelect.style.display = "block";
@@ -148,14 +157,14 @@
                     });
                 }
             }
-
+            // If there is more than the o
             reminderContainer.appendChild(reminderDiv);
             if (reminderContainer.children.length > 1) {
                 addRemoveButton(reminderDiv);
             }
             reminderCount++;
         }
-
+        // Removes a reminder field and erases its data, removing the appropriate reminder container simultaneously
         function addRemoveButton(reminderDiv) {
             var removeButton = document.createElement("button");
             removeButton.type = "button";
@@ -165,12 +174,12 @@
             };
             reminderDiv.appendChild(removeButton);
         }
-    
+                // Adds a reminder field
                 function init() {
             addReminder();
         }
 
-        // Call init when the window finishes loading
+        // Call init when the window finishes loading to add one default reminder object to the event form
         window.onload = init;
     </script>
 </head>
@@ -181,35 +190,40 @@
     </div>
     <h1>PiTime Alarm Form</h1>
     <form action="/submit" method="post" enctype="multipart/form-data">
-        <!-- Main Event Title and Description -->
+        <!-- Location of entry fields submitted in POST -->
+        <!-- Event title limited to 120 characters-->
         <div class="form-group">
             <label for="main_event_title">Event Title:</label>
             <input type="text" id="main_event_title" name="main_event_title" maxlength = 120 required>
         </div>
-
+        <!-- Event description limited to 500 characters -->
         <div class="form-group">
             <label for="main_event_description">Description:</label>
             <textarea id="main_event_description" name="main_event_description" rows="4" cols="50" maxlength = 500 required></textarea>
         </div>
-
+        <!-- Image upload, requires it to be an image -->
         <div class="form-group">
             <label for="event_image">Event Image:</label>
             <input type="file" id="event_image" name="event_image" accept="image/*">
         </div>
 
-        <!-- Reminders -->
+        <!-- Contains all reminder forms -->
         <div id="reminder-container"></div>
 
-        <!-- Button to add the first reminder -->
+        <!-- Adds a new reminder field and declares a new Reminder ID -->
         <button type="button" onclick="addReminder()">Add Reminder</button>
 
-        <!-- Submit Button -->
+        <!-- Submits all event details and saved reminders -->
         <input type="submit" value="Submit">
         <div class="form-errors">
+            <!-- In the context of there being flashed messages stored after submission -->
             {% with messages = get_flashed_messages() %}
+                <!-- If there are any messages provided -->
                 {% if messages %}
                     <ul>
+                        <!-- For all of the messages returned -->
                         {% for message in messages %}
+                            <!-- Print it as entries in a list -->
                             <li>{{ message }}</li>
                         {% endfor %}
                     </ul>

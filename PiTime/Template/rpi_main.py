@@ -5,13 +5,13 @@ from models import db, Event, Reminder
 from rpi_models import Speaker, Buzzer, Vibration
 from time import sleep
 from datetime import datetime
-from dateutil.relativedelta import relativedelta
+from dateutil.relativedelta import relativedelta # Adjusts time accurately based on timezones / variable month lengths to ensure consistency in repeater functionality
 
 app = Flask(__name__)
 app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///alarm-reminder.db'
 db.init_app(app)
 
-def snooze_button():
+def snooze_button(): # Function to be called when the snooze button is pressed (gpiozero)
     global alarm_trigger
     alarm_trigger = False
 
@@ -33,7 +33,7 @@ def initialize_globals():
     '''
     global alarm_trigger, options_dict, current_events_dict, current_urgency
     alarm_trigger = False
-    options_dict = {'buzzer': False,
+    options_dict = {'buzzer': False, # Global dictionary for keeping track of triggered functions
                     'vibration': False,
                     'web_unlock': False,
                     'alarm': {'None'}}
@@ -59,12 +59,12 @@ def reminder_looper(original_datetime, repeater):
             "Monthly": relativedelta(months=1),
             "Yearly": relativedelta(years=1)
         }
-    if not(repeater in list(time_additions.keys())):
-        raise ValueError("Repeater value must be in the legal Repeater set")
-    if type(repeater) != str:
-        raise TypeError("Repeater must be a string")
+    if not(repeater in list(time_additions.keys())): # If the repeater value is illegal
+        raise ValueError("Repeater value must be in the legal Repeater set") # Raise an error
+    if type(repeater) != str: # If the repeater value is not a string
+        raise TypeError("Repeater must be a string") # Raise an error
     addition = time_additions.get(repeater, relativedelta())  # Default to no addition if the string is not found
-    return original_datetime + addition
+    return original_datetime + addition # Return the new datetime
 
 def fetch_active_reminders():
     '''
@@ -235,7 +235,6 @@ def set_web_unlock(flag):
         options_dict['web_unlock'] = False
         return None
 
-
 def speak(speech):
     '''
     Hitherto unresolved text-to-speech application
@@ -243,15 +242,19 @@ def speak(speech):
     print(speech)
 
 def main():
+    '''
+    Tentative looping event/reminder checker that queries active events at regular intervals and triggers alarms if the events are active and at least one of the reminders is in the past.
+        It accumulates the flags of all of the triggered reminders as new ones are discovered and only pulls down the flags when the alarm unlock conditions are met
+    '''
     with app.app_context(): # Manually create app context in the absence of Flask routes so that the app doesn't have to be destroyed and recreated for every check
         initialize_globals()
-        urgency_comparator = {'None' : 0, # Enclosing scope means of quantifying/comparing urgency
+        urgency_comparator = {'None' : 0, #  Means of quantifying/comparing urgency
                             'Not at all' : 1,
                             'Somewhat' : 2,
                             'Urgent' : 3,
                             'Very' : 4,
                             'Extremely' : 5}
-        buzzer = speaker = vibration = None
+        buzzer = speaker = vibration = None # Preemptively create objects associated with each alarm function so that they can be used in the control structures of the loop before being declared as rpi_models objects
         while True:
             process_event_reminders(urgency_comparator)
             while alarm_trigger or options_dict['web_unlock']:               

@@ -6,17 +6,14 @@ from models import db, Event, Reminder
 
 app = Flask(__name__, template_folder=os.path.join(os.path.dirname(os.path.abspath(__file__)), 'templates'))
 
-
-image_folder = os.path.join(app.root_path, 'static')
-
+image_folder = os.path.join(app.root_path, 'static') # Create a default folder to store images, in this case shared with the static folder
 if not os.path.exists(image_folder):
     os.makedirs(image_folder)
-
 app.config['UPLOAD_FOLDER'] = image_folder
 
 app.config['SECRET_KEY'] = ';lkjfdsa' # nice try hacker man
 app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///alarm-reminder.db'
-db.init_app(app)
+db.init_app(app) # Initializes context for database reads/writes
 
 with app.app_context(): # creates a background environment to keep track of application-level data for the current app instance 
     db.create_all() #idempotent, creates tables if absent but leaves them if they already exist
@@ -31,7 +28,7 @@ def index():
 @app.route('/submit', methods=['POST']) # HTTP verb called for sending data to a server when host/submit URL is called
 def submit():
     '''
-    Uses functions parse_form_data and add_event_reminders to convert user input into Event and Reminder objects
+    Uses functions parse_form_data and add_event_reminders to convert user input into Event and Reminder objects, which are then stored in an SQLite database
     '''
     event_title, event_description, reminders = parse_form_data(request.form)
     
@@ -195,7 +192,7 @@ def add_event_and_reminders(event_title, event_description, reminders_data):
         db.session.commit()
     except Exception as ex:
         db.session.rollback()
-        raise ex
+        print(f"An unexpected error occurred, {ex}")
     
     return current_event.id
 
@@ -203,12 +200,14 @@ def add_event_and_reminders(event_title, event_description, reminders_data):
 def key_check(key):
     '''
     Function: Determines if a user-entered URL matches the web_unlock key decided in rpi_main
-    Parameters: key, string
-    Returns: Switches web_unlock value to 0 from 1 and wipes unlock.txt
+    Parameters: 
+        key (string), optional parameter passed in from the URL
+    Returns: 
+        Switches alarm.txt content to '' from '1' and wipes unlock.txt
     '''
-    unlock_key = read_unlock_val('unlock.txt')
-    if key == unlock_key:
-        return clear_web_unlock(unlock_key)  # Call the function that should be triggered
+    unlock_key = read_unlock_val('unlock.txt') # Reads in web_unlock key
+    if key == unlock_key: # If the value entered in the URL matches the key stored in .unlock
+        return clear_web_unlock(unlock_key)  # Call the function to unlock the web_unlock functionality
     else:
         abort(404)  # Not found if the key is not valid
 
@@ -221,7 +220,7 @@ def clear_web_unlock():
     script_directory = os.path.dirname(os.path.abspath(__file__)) # fetches current working directory
     unlock = os.path.join(script_directory, '.unlock', 'unlock.txt') # builds a relative path
     alarm = os.path.join(script_directory, '.unlock', 'alarm.txt')
-    open(unlock, 'w').close()
+    open(unlock, 'w').close() # Wipes each alarm (flag? not sure what word to use here)
     open(alarm, 'w').close()
     return "Function triggered successfully!"
 
@@ -239,25 +238,52 @@ def read_unlock_val(file):
 
 @app.route('/events')
 def events():
-    sort_order = request.args.get('sort', 'desc')  # Default sort order is descending
+    '''
+        Function: events(), route for displaying all active alarms
+            Alarms are active when Events.event_lock is False
+            Queries all active events and parses them with relevant_events_filter
+            Pulls all images connected to an active event and adds them to the appropriate event in the query dictionary
+        Optional args (passed from URL):
+            'desc' --> sorts events by date in descending order
+            '*' --> sorts events by ascending order
+        Returns:
+            Renders template based on current parameters
+    '''
+    sort_order = request.args.get('sort', 'desc')  # Looks for a value in the arguments passed in the /events call, default sort order is descending
 
     events = Event.query.filter_by(event_lock = False).all() # Pull all events from the database that haven't been deactivated
-    print(events)
+    # print(events)
     events_with_images = []
     events_with_reminders = []
     try:
         events_with_reminders = relevant_events_filter(events) 
         events_with_images = add_image_filepath_to_event_dictionary(events_with_reminders)
-        print(events_with_images)
+        # print(events_with_images)
     except TypeError as ex:
         print("No events have been created yet")
     # Sort events by their most recent reminder. My friend Ethan helped me with this part I'll be honest I have no idea how it works
     if sort_order == 'desc':
-        events_with_images.sort(key=lambda e: max(r.date_time for r in e['reminders']), reverse=True)
+        events_with_images.sort(key=latest_reminder_date, reverse=True) # applies latest_reminder_date to each event entry as a point of comparison between each event so the event with the most recent reminder comes first, then reverses it to be in descending order
     else:
-        events_with_images.sort(key=lambda e: min(r.date_time for r in e['reminders']))
+        events_with_images.sort(key=earliest_reminder_date) # sorts so the events with the earliest reminder in ascending order
 
     return render_template('events.html', events=events_with_images, sort_order=sort_order)
+
+def latest_reminder_date(event):
+    '''
+        Function: returns the latest reminder date for an event element in a list of parsed event object dictionaries
+        Args:
+            event (dict), dictionary of the attributes of queried Event objects
+    '''
+    return max(reminder.date_time for reminder in event['reminders'])
+
+def earliest_reminder_date(event):
+    '''
+        Function: returns the earliest reminder date for an event element in a list of parsed event object dictionaries
+        Args:
+            event (dict), dictionary of the attributes of queried Event objects
+    '''    
+    return min(reminder.date_time for reminder in event['reminders'])
 
 def add_image_filepath_to_event_dictionary(events_with_reminders):
     '''
@@ -268,18 +294,18 @@ def add_image_filepath_to_event_dictionary(events_with_reminders):
             events_with_reminders (list): A modified list containing file paths when relevant, default image is None
     '''
     for event in events_with_reminders:
-        event['image_path'] = None
+        event['image_path'] = None # Initialize default image_path 
         for ext in ['png', 'jpg', 'jpeg', 'gif']:
-            possible_path = os.path.join('static', f"{event['id']}.{ext}")
-            full_path = os.path.join(app.root_path, possible_path)
-            if os.path.isfile(full_path):
-                event['image_path'] = f"{event['id']}.{ext}"
-                break
-    return events_with_reminders
+            possible_path = os.path.join('static', f"{event['id']}.{ext}") # Tests if the image associated with an alarm ID is valid
+            full_path = os.path.join(app.root_path, possible_path) # Joins that path with the absolute path of the current working directory
+            if os.path.isfile(full_path): # If this path is valid
+                event['image_path'] = f"{event['id']}.{ext}" # Store the image path in the parsed event object dictionary
+                break # No need to look any further
+    return events_with_reminders # Return list of parsed event dictionary objects with the added image filepath (if present)
 
 def relevant_events_filter(events_query):
     '''
-        Function: Takes an Event Query object and filters out deactivated Event objects, and Events with no reminders parsing the data into a list of dictionaries for interpretation at the scripting level
+        Function: Takes an Event Query object and parses the data into a list of dictionaries for interpretation at the scripting level
         Args:
             events_query (Query), a query containing Event instances
         Returns:
