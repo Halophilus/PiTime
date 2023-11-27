@@ -261,7 +261,6 @@ def events():
         # print(events_with_images)
     except TypeError as ex:
         print("No events have been created yet")
-    # Sort events by their most recent reminder. My friend Ethan helped me with this part I'll be honest I have no idea how it works
     if sort_order == 'desc':
         events_with_images.sort(key=latest_reminder_date, reverse=True) # applies latest_reminder_date to each event entry as a point of comparison between each event so the event with the most recent reminder comes first, then reverses it to be in descending order
     else:
