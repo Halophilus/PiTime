@@ -3,7 +3,7 @@ import random
 import time
 import pygame
 import threading
-# from gpiozero import Button, Buzzer
+from gpiozero import Button, LED, Buzzer
 
 class Buzzer: # active piezoelectric buzzer for droning alarm sound
     def __init__(self, pin):
@@ -14,7 +14,7 @@ class Buzzer: # active piezoelectric buzzer for droning alarm sound
         Args:
             pin (int), GPIO pin number assigned to the vibration module        
         '''
-        self.buzzer = pin
+        self.buzzer = Buzzer(17)
         print(f"BUZZER DECLARED AT PIN {pin}")
         self.buzzing = False
         self.thread = None
@@ -44,15 +44,17 @@ class Buzzer: # active piezoelectric buzzer for droning alarm sound
                 if self.buzzing:
                     self.buzzing = False
                     self.thread.join() # Terminates all current threads related to this object
-                    # self.buzzer.off()
+                    self.buzzer.off()
             except Exception as ex:
                 print(f"Error in Buzzer stop method: {ex}")
 
     def buzz(self):
         while self.buzzing:
-            print("BUZZING ON") #buzzer.on()
+            self.buzzer.on()
+            print("BUZZING ON")
             time.sleep(1)
-            print("BUZZING OFF") #buzzer.off()
+            self.buzzer.off()
+            print("BUZZING OFF")
             time.sleep(1.5)
 
 class Vibration: # 5V vibration module driven by a transistor and 3.3V logic
@@ -64,7 +66,7 @@ class Vibration: # 5V vibration module driven by a transistor and 3.3V logic
         Args:
             pin (int), GPIO pin number assigned to the vibration module
         '''
-        self.vibration = pin #gpiozero.LED(pin)
+        self.vibration = LED(25)
         print(f"VIBRATION DECLARED AT PIN {pin}")
         self.vibrating = False
         self.thread = None
@@ -94,7 +96,7 @@ class Vibration: # 5V vibration module driven by a transistor and 3.3V logic
                 if self.vibrating:
                     self.vibrating = False
                     self.thread.join()
-                    # self.vibration.off()
+                    self.vibration.off()
             except Exception as ex:
                 print(f"Error in Vibration.stop method: {ex}")
 
@@ -103,9 +105,11 @@ class Vibration: # 5V vibration module driven by a transistor and 3.3V logic
         Controls gpiozero driver, turning vibration motor on and off as long as self.vibrating is True
         '''
         while self.vibrating:
-            print("VIBRATING") #vibration.on()
+            self.vibration.on()
+            print("VIBRATING ON")
             time.sleep(1)
-            print("NOT VIBRATING") #vibration.off()
+            self.vibration.off()
+            print("VIBRATING OFF")
             time.sleep(1.5)
 
 class Speaker:
