@@ -1,7 +1,7 @@
 from gpiozero import LED, Buzzer
 from time import sleep
 
-# Initialize the LED and buzzer
+# Initial hardware test passed
 vibration = LED(25)
 buzzer = Buzzer(17)
 
