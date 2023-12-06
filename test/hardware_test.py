@@ -26,5 +26,5 @@ try:
 
 except KeyboardInterrupt:
     # Clean up the GPIOs on Ctrl+C exit
-    led.close()
+    vibration.close()
     buzzer.close()
