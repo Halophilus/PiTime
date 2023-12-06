@@ -3,7 +3,7 @@ from time import sleep
 
 # Initialize the LED and buzzer
 vibration = LED(25)
-buzzer = LED(5)
+buzzer = Buzzer(17)
 
 try:
     while True:
