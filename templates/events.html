@@ -69,7 +69,10 @@
                     {% endfor %}
                     <!-- Edit button doesn't do anything yet, delete event sets event_lock flag to True, deactivating all events and reminders associated with that event-->
                     <a href="/edit-event/{{ event.id }}" class="edit-btn">Edit Event</a> 
-                    <a href="/delete-event/{{ event.id }}" class="delete-btn">Delete Event</a>
+                    <!-- This next button is embedded in a form to submit a POST request to the server so that the delete event function can be called-->
+                    <form action = "{{ url_for('delete_event', event_id=event.id) }}" method="post">
+                        <button type="submit" class="delete-btn">Delete Event</button>
+                    </form>
                 </div>
     
                 <!-- The image uploaded when the event was created, as a visual reminder for the event -->
@@ -81,5 +84,14 @@
             </div>
         {% endfor %}
     </div>
+    {% with messages = get_flashed_messages() %}
+        {% if messages %}
+            <div class="flash-messages">
+                {% for message in messages %}
+                    <p>{{ message }}</p>
+                {% endfor %}
+            </div>
+        {% endif %}
+    {% endwith %}
 </body>
 </html>

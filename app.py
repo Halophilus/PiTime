@@ -327,5 +327,24 @@ def relevant_events_filter(events_query):
             print(f"No reminders associated with this event, {e}")
     return events_with_reminders
 
+@app.route('/delete-event/<int:event_id>', methods = ['POST'])
+def delete_event(event_id):
+    event_to_delete = db.session.query(Event).filter(Event.id == event_id).one_or_none()
+    reminders_to_delete = event_to_delete.reminders.all()
+    if event_to_delete:
+        event_to_delete.event_lock = True
+        for reminder in reminders_to_delete:
+            reminder.reminder_lock = True
+            try:
+                db.session.commit()
+                flash(f"Event {event_to_delete.title} deleted successfully")
+            except Exception as ex:
+                db.session.rollback()
+                flash(f"Error occurred when deleting {event_to_delete.title}")
+    else:
+        flash(f"Event {event_id} does not exist")
+    return redirect(url_for('events'))
+
+
 if __name__ == "__main__":
     app.run(debug=True)
