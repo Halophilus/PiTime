@@ -16,6 +16,10 @@ class Event(db.Model): # Objects are not being stored in memory and thus do not 
     event_lock = db.Column(db.Boolean, default = False)
     reminders = db.relationship('Reminder', backref='event', lazy='dynamic') # Enabeles a 1 event to many reminders configuration
 
+    def __repr__(self):
+        return f"<Event(id='{self.id}', title='{self.title}')>"
+
+
 class Reminder(db.Model):
     '''
     Reminder object based on database model (SQLite), given its own table
@@ -41,5 +45,9 @@ class Reminder(db.Model):
     alarm = db.Column(db.String(120))  # Indicates urgency of the alarm required for this reminder. Hereafter referred to as 'urgency'
     repeater = db.Column(db.String(50)) # String reminder repeat
     event_id = db.Column(db.Integer, db.ForeignKey('event.id'), nullable=False) # Implicit connection to some event object
+
+    def __repr__(self):
+        optional_flags = f"buzzer={self.buzzer}, vibration={self.vibration}, web_unlock={self.web_unlock}, reminder_lock={self.reminder_lock}"
+        return f"<Reminder(id='{self.id}', event_id='{self.event_id}', date_time='{self.date_time}', alarm='{self.alarm}', repeater='{self.repeater}')\n   Optional Flags: {optional_flags}>"
 
 
