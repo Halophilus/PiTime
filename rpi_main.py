@@ -40,7 +40,7 @@ def initialize_globals():
                     event.description (str), the description of the event
             current_urgency (str), the current maximum urgency of the triggered alarms, used to keep track of changes in urgency to control whether or not a new Speaker object is declared
     '''
-    print("RPI_MAIN.initialize_globals: Intializing globals")
+    print("\n\nRPI_MAIN.initialize_globals: Intializing globals")
     global alarm_trigger, options_dict, current_events_dict, current_urgency
     try:
         alarm_trigger = False
@@ -51,7 +51,7 @@ def initialize_globals():
         current_events_dict = {}
         current_urgency = 'None'
     except Exception as ex:
-        print(f"Error initializing globals in rpi_main: {ex}")
+        print(f"Error initializing globals in rpi_main: {ex}\n")
 
 def reminder_looper(original_datetime, repeater):
     '''
@@ -64,7 +64,7 @@ def reminder_looper(original_datetime, repeater):
         Returns:
             New datetime postponed by value corresponding to repeater (datetime)
     '''
-    print(f"RPI_MAIN.reminder_looper: Trying to loop {original_datetime} by {repeater}")
+    print(f"\n\nRPI_MAIN.reminder_looper: Trying to loop {original_datetime} by {repeater}")
     time_additions = {
             "Never": relativedelta(),  # No addition
             "Hourly": relativedelta(hours=1),
@@ -91,7 +91,7 @@ def fetch_active_reminders():
         Returns:
             Query object containing all relevant Reminder objects
     '''
-    print(f"RPI_MAIN.fetch_active_reminders: Fetching active reminders")
+    print(f"\n\nRPI_MAIN.fetch_active_reminders: Fetching active reminders")
     try:
         current_time = datetime.now()
         query_object = Reminder.query.join(Event).filter(Reminder.reminder_lock == False)\
@@ -110,7 +110,8 @@ def update_reminder(reminder):
         Args:
             reminder (Reminder): representing a row in the Reminder table of the database
     '''
-    print(f"RPI_MAIN.update_reminder: Trying to update reminder {reminder}")
+    print(f"\n\nRPI_MAIN.update_reminder: Trying to update reminder {reminder}")
+    initial_reminder = reminder
     try:
         print(f"Reminder {reminder.id} set to repeat {reminder.repeater}")
         reminder.date_time = reminder_looper(reminder.date_time, reminder.repeater)
@@ -120,13 +121,14 @@ def update_reminder(reminder):
             reminder.reminder_lock = True
         try: # Ask for forgiveness
             print(f"Revised reminder: {reminder}")
-            print("Trying to commit to database")
+            print("Trying to commit to database...")
             db.session.commit() # Add floating entries to database
         except Exception as e: # Generic error message
             db.session.rollback() # Deletes current floating session instead of committing it
             print(f"An error occurred in committing update_reminder to database for {reminder.id} from event {reminder.event.id} ({reminder.event.title}): {e}")
     except Exception as e:
         print(f"An error occurred in update_reminder for {reminder.id} from event {reminder.event.id} ({reminder.event.title}): {e}")
+    print(f"{initial_reminder} successfully updated to {reminder}")
 
 def update_options_dict(reminder):
     '''
@@ -137,8 +139,8 @@ def update_options_dict(reminder):
             reminder (Reminder): representing a row in the Reminder table of the database
     '''
     global options_dict
-    print(f"RPI_MAIN.update_options_dict: updating options dict for reminder {reminder}")
-    print(f"Initial options_dict: {options_dict}")
+    print(f"\n\nRPI_MAIN.update_options_dict: updating options dict for reminder {reminder}")
+    print(f"Initial options_dict: {options_dict}\n")
     try:
         options_dict['buzzer'] = options_dict['buzzer'] or reminder.buzzer # OR logic makes it so additional True or False calls will only yield True given at least one True assignment
         options_dict['vibration'] = options_dict['vibration'] or reminder.vibration
@@ -147,6 +149,7 @@ def update_options_dict(reminder):
         print(f"Final options_dict: {options_dict}")
     except Exception as e:
         print(f"An error occurred in update_options_dict for {reminder.id} from {reminder.event.id} ({reminder.event.title}): {e}")
+    print(f"Final options_dict: {options_dict}")
 
 def update_current_events_dict(reminder):
     '''
@@ -157,11 +160,11 @@ def update_current_events_dict(reminder):
             reminder (Reminder): representing a row in the Reminder table of the database
     '''
     global current_events_dict
-    print(f"RPI_MAIN.update_current_events_dict: Trying to update current_events_dict")
-    print(f"Current current_events_dict: {current_events_dict}")
+    print(f"\n\nRPI_MAIN.update_current_events_dict: Trying to update current_events_dict\n")
+    print(f"Current current_events_dict: {current_events_dict}\n")
     try:
         current_events_dict[reminder.event.id] = (reminder.event.title, reminder.event.description)
-        print(f"Updated current_events_dict: {current_events_dict}")    
+        print(f"Updated current_events_dict: {current_events_dict}\n")    
     except Exception as e:
         print(f"An error occurred in update_current_events for {reminder.id} from event {reminder.event.id} ({reminder.event.title}): {e}")
 
@@ -174,7 +177,7 @@ def update_urgency(urgency_comparator):
             urgency_comparator (dict), associates urgency values with a finite score  
     '''
     global current_urgency, options_dict
-    print(f"RPI_MAIN.update_urgency: Trying to update current alarm urgency")
+    print(f"\n\nRPI_MAIN.update_urgency: Trying to update current alarm urgency")
     print(f"Current urgency: {current_urgency}")
     try:
         for urgencies in options_dict['alarm']:
@@ -194,7 +197,7 @@ def process_event_reminders(urgency_comparator):
             urgency_comparator (dict), associates urgency values with a finite score
     '''
     global alarm_trigger, options_dict, current_events_dict, current_urgency
-    print(f"RPI_MAIN.process_event_reminders(): Trying to process event reminders")
+    print(f"\n\nRPI_MAIN.process_event_reminders(): Trying to process event reminders")
     try:
         print(f"Current alarm trigger: {alarm_trigger}")
         active_reminders = fetch_active_reminders()
@@ -205,7 +208,7 @@ def process_event_reminders(urgency_comparator):
             update_current_events_dict(reminder)
             update_urgency(urgency_comparator)
             update_reminder(reminder)
-            print(f"Updated reminder: {reminder}")
+            print(f"Updated reminder: {reminder}\n")
         print("Revised globals:")
         print(f"Options dict: {options_dict}")
         print(f"Current events dict: {current_events_dict}")
@@ -221,8 +224,10 @@ def reset():
     '''
     global options_dict, alarm_trigger, current_events_dict, current_urgency
     alarm_trigger = False
-    print("RPI_MAIN: Trying to reset default values")
-    print(f"Current options dict: {options_dict}")
+    print("\n\nRPI_MAIN: Trying to reset default values")
+    print(f"Current options dict: {options_dict}\n")
+    print(f"Current events dictionary: {current_events_dict}\n")
+    print(f"Current urgency: {current_urgency}")
     try:
         options_dict = {'buzzer':False,
                         'vibration':False,
@@ -243,10 +248,11 @@ def write_to_file(file, val):
         File: str, filename within .unlock
         Val: str, new value 
     '''
-    print(f"RPI_MAIN.write_to_file: Trying to write {val} to {file}")
+    print(f"\n\nRPI_MAIN.write_to_file: Trying to write {val} to {file}")
     try:
         script_directory = os.path.dirname(os.path.abspath(__file__)) # fetches current working directory
         new_path = os.path.join(script_directory, '.unlock', file) # builds a relative path
+        print(f"File path: {new_path}")
         with open(new_path, 'w') as alarm_flag:
             alarm_flag.write(val)
             print("File successfully written")
@@ -259,7 +265,7 @@ def get_from_file(file):
         file: str, filename
     Returns str file contents
     '''
-    print(f"RPI_MAIN.get_from_file: Trying to get contents {file}")
+    print(f"\n\nRPI_MAIN.get_from_file: Trying to get contents {file}")
     try:
         script_directory = os.path.dirname(os.path.abspath(__file__)) # fetches current working directory
         new_path = os.path.join(script_directory, '.unlock', file) # builds a relative path
@@ -277,11 +283,12 @@ def get_web_unlock():
         '1': web_unlock is active
         '': web_unlock is inactive
     '''
-    print("RPI_MAIN.get_web_unlock: Trying to retrieve web_unlock flag from file")
+    print("\n\nRPI_MAIN.get_web_unlock: Trying to retrieve web_unlock flag from file")
     try:
         script_directory = os.path.dirname(os.path.abspath(__file__))
         alarm = os.path.join(script_directory, '.unlock', 'alarm.txt')
         flag = get_from_file(alarm)
+        print(f"Flag pulled from file: {flag}")
         if bool(flag):
             print("Web unlock flag file: True")
             return True
@@ -301,12 +308,12 @@ def set_web_unlock(flag):
         random_string (str) 32 random characters to be used for the web unlock
     '''
     global options_dict
-    print(f'RPI_MAIN.set_web_unlock: Setting web unlock file flag to {flag}')
+    print(f'\n\nRPI_MAIN.set_web_unlock: Setting web unlock file flag to {flag}')
     try:
         script_directory = os.path.dirname(os.path.abspath(__file__))
         alarm = os.path.join(script_directory, '.unlock', 'alarm.txt')
         if flag:
-            print("Setting to True")
+            print("Setting to True, writing '1' to file")
             write_to_file(alarm, '1')
             chars = string.ascii_letters + string.digits + string.punctuation
             random_string = ''.join(random.choice(chars) for i in range(32))
@@ -333,7 +340,7 @@ def main():
         It accumulates the flags of all of the triggered reminders as new ones are discovered and only pulls down the flags when the alarm unlock conditions are met
     '''
     with app.app_context(): # Manually create app context in the absence of Flask routes so that the app doesn't have to be destroyed and recreated for every check
-        print("INITIALIZING MAIN SCRIPT")
+        print("\n\n\nINITIALIZING MAIN SCRIPT")
         initialize_globals()
         urgency_comparator = {'None' : 0, #  Means of quantifying/comparing urgency
                             'Not at all' : 1,

@@ -291,8 +291,9 @@ def read_unlock_val(file):
         print(f"Key file directory: {unlock_file_path}")
         print("Attempting to read key file")
         with open(unlock_file_path, 'r') as file: # reads key from file
-            print(f"Unlock key: {file.read().strip}\n")
-            return file.read().strip() # returns key minus leading white space
+            key_content = file.read().strip()
+            print(f"Unlock key: {key_content}\n")
+            return key_content # returns key minus leading white space
     except Exception as ex:
         print(f"An error occurred in read_unlock_val.app.py: {ex}\n")
         return ''
