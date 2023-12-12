@@ -1,19 +1,28 @@
-import os, random, string
+import os, random, string, textwrap
+from I2C_LCD_driver import lcd
+from gpiozero import Button
 from flask import Flask
 from flask_sqlalchemy import SQLAlchemy
 from models import db, Event, Reminder
 from rpi_models import Speaker, Buzzer, Vibration
 from time import sleep
-from datetime import datetime
+from datetime import datetime, date
 from dateutil.relativedelta import relativedelta # Adjusts time accurately based on timezones / variable month lengths to ensure consistency in repeater functionality
+
 
 app = Flask(__name__)
 app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///alarm-reminder.db'
 db.init_app(app)
 
-def snooze_button(): # Function to be called when the snooze button is pressed (gpiozero)
+# Hardware objects
+lcd_screen = lcd()
+snooze_button = Button(23)
+
+def snooze_button_press(): # Function to be called when the snooze button is pressed (gpiozero)
     global alarm_trigger
     alarm_trigger = False
+
+snooze_button.when_pressed = snooze_button_press
 
 def initialize_globals():
     '''
@@ -134,7 +143,6 @@ def update_options_dict(reminder):
         options_dict['buzzer'] = options_dict['buzzer'] or reminder.buzzer # OR logic makes it so additional True or False calls will only yield True given at least one True assignment
         options_dict['vibration'] = options_dict['vibration'] or reminder.vibration
         options_dict['web_unlock'] = options_dict['web_unlock'] or reminder.web_unlock
-        set_web_unlock(options_dict['web_unlock'])
         options_dict['alarm'].add(reminder.alarm) # Adds urgency to set so that only original entries are stored
         print(f"Final options_dict: {options_dict}")
     except Exception as e:
@@ -271,7 +279,9 @@ def get_web_unlock():
     '''
     print("RPI_MAIN.get_web_unlock: Trying to retrieve web_unlock flag from file")
     try:
-        flag = get_from_file('alarm.txt')
+        script_directory = os.path.dirname(os.path.abspath(__file__))
+        alarm = os.path.join(script_directory, '.unlock', 'alarm.txt')
+        flag = get_from_file(alarm)
         if bool(flag):
             print("Web unlock flag file: True")
             return True
@@ -293,9 +303,11 @@ def set_web_unlock(flag):
     global options_dict
     print(f'RPI_MAIN.set_web_unlock: Setting web unlock file flag to {flag}')
     try:
+        script_directory = os.path.dirname(os.path.abspath(__file__))
+        alarm = os.path.join(script_directory, '.unlock', 'alarm.txt')
         if flag:
             print("Setting to True")
-            write_to_file("alarm.txt", '1')
+            write_to_file(alarm, '1')
             chars = string.ascii_letters + string.digits + string.punctuation
             random_string = ''.join(random.choice(chars) for i in range(32))
             write_to_file("unlock.txt", random_string)
@@ -303,7 +315,7 @@ def set_web_unlock(flag):
             return random_string
         else:
             print("Setting to False")
-            write_to_file("alarm.txt", '')
+            write_to_file(alarm, '')
             options_dict['web_unlock'] = False
             return None
     except Exception as ex:
@@ -337,9 +349,22 @@ def main():
             while alarm_trigger or options_dict['web_unlock']:               
                 print("CHECKING WEB UNLOCK")
                 if not get_web_unlock():
+                    print("NO LOCK FOUND")
                     print("WEB UNLOCK FLAG SET TO FALSE")
                     print("SETTING LOCAL WEB UNLOCK FLAG TO FALSE")
                     set_web_unlock(False)
+                elif options_dict["web_unlock"]:
+                    print("WEB LOCK ENABLED")
+                    print("GENERATING NEW WEB UNLOCK KEY")
+                    web_unlock_key = set_web_unlock(True) # Generates a new web_unlock key every 30 seconds
+                    print(f"WEB UNLOCK KEY: {web_unlock_key}")
+                    print("PROCESSING EVENT REMINDERS")
+                    process_event_reminders(urgency_comparator)
+                    random_string = set_web_unlock(options_dict['web_unlock'])
+                    split_strings = textwrap.wrap(random_string, 16)
+                    lcd_screen.lcd_display_string(split_strings[0], 1)
+                    lcd_screen.lcd_display_string(split_strings[1], 2)
+                    lcd_screen.backlight(0)
                 print("CHECKING FOR CURRENT URGENCY")
                 if current_urgency != 'None':
                     print(f"CURRENT URGENCY: {current_urgency}")
@@ -386,19 +411,26 @@ def main():
                     print("GENERATING NEW WEB UNLOCK KEY")
                     web_unlock_key = set_web_unlock(True) # Generates a new web_unlock key every 30 seconds
                     print(f"WEB UNLOCK KEY: {web_unlock_key}")
-                    print("PROCESSING EVENT REMINDERD")
-                    process_event_reminders(urgency_comparator)
+                print("PROCESSING EVENT REMINDERS")
+                process_event_reminders(urgency_comparator)
                 sleep(30)
                 print("END OF ALARM LOOP")
             else:
                 number_of_events = len(current_events_dict)
-                speak(f'You have {number_of_events} events currently')
-                for keys in current_events_dict:
-                    speak(f"Event number {keys}")
-                    speak(current_events_dict[keys][0])
-                    speak(current_events_dict[keys][1])
-                    sleep(3)
+                if number_of_events > 0:
+                    speak(f'You have {number_of_events} events currently')
+                    for keys in current_events_dict:
+                        speak(f"Event number {keys}")
+                        speak(current_events_dict[keys][0])
+                        speak(current_events_dict[keys][1])
+                        sleep(3)
                 reset()
+            lcd_screen.clear()
+            lcd_screen.backlight(1)
+            today = date.today()
+            time = datetime.now()
+            current_time = time.strftime("%I:%M %p")
+            current_date = today.strftime("%B %d, '%y")
             sleep(60)
 
 if __name__ == '__main__':
