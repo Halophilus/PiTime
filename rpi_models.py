@@ -6,7 +6,7 @@ import threading
 from gpiozero import Button, LED, Buzzer
 
 class Buzzer: # active piezoelectric buzzer for droning alarm sound
-    def __init__(self, pin):
+    def __init__(self):
         '''
         Initializes Buzzer object
             Utilizes gpiozero driver for an active piezoelectric buzzer to add a beeping sound to the alarm
@@ -58,7 +58,7 @@ class Buzzer: # active piezoelectric buzzer for droning alarm sound
             time.sleep(1.5)
 
 class Vibration: # 5V vibration module driven by a transistor and 3.3V logic
-    def __init__(self, pin):
+    def __init__(self):
         '''
         Initializes the Vibration object
             Sets up a gpiozero LED instance that triggers a high power mosfet to activate a 5V ERM vibration motor

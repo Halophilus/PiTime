@@ -255,7 +255,7 @@ def write_to_file(file, val):
         print(f"File path: {new_path}")
         with open(new_path, 'w') as alarm_flag:
             alarm_flag.write(val)
-            print("File successfully written")
+            print(f"{val} successfully written to {file}")
     except Exception as ex:
         print(f"An error occurred in rpi_main.write_to_file(): {ex}")
 
@@ -270,8 +270,9 @@ def get_from_file(file):
         script_directory = os.path.dirname(os.path.abspath(__file__)) # fetches current working directory
         new_path = os.path.join(script_directory, '.unlock', file) # builds a relative path
         with open(new_path, 'r') as alarm_flag:
-            print(f"Contents found: {str(alarm_flag.read()).strip()}")
-            return str(alarm_flag.read()).strip()
+            file_contents = str(alarm_flag.read()).strip()
+            print(f"Contents found: {file_contents}")
+            return file_contents
     except Exception as ex:
         print(f"Error at rpi_main.get_from_file(): {ex}")
 
