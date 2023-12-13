@@ -109,7 +109,7 @@ class Vibration: # 5V vibration module driven by a transistor and 3.3V logic
 class Speaker:
     def __init__(self, urgency='None'):
         """
-        Initializes the Speaker object.
+        Initializes the Speaker object. Originally used Sound object but switched to music for mp3 compatibility
         Args:
             urgency (str): The urgency level for which to select a random alarm, the default of which is None.
         """
@@ -144,9 +144,7 @@ class Speaker:
             print(f"\n\n\n ATTEMPTING TO PLAY: {alarm_file} \n\n\n")
             if alarm_file:
                 pygame.mixer.music.load(alarm_file)
-                pygame.mixer.music.play()
-                while self.playing:
-                    pygame.time.delay(100)  # Delay for 100 milliseconds
+                pygame.mixer.music.play(-1)  # Set the number of repeats to -1 for indefinite looping
         except Exception as ex:
             print(f"Error in Speaker.play_loop: {ex}")
 
