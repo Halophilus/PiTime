@@ -376,9 +376,9 @@ def main():
             today = date.today()
             time = datetime.now()
             current_time = str(time.strftime("%I:%M %p"))
-            print(f"Current time: {current_time}")
+            print(f"CURRENT TIME: {current_time}")
             current_date = str(today.strftime("%B %d, '%y"))
-            print(f"Current date: {current_date}")
+            print(f"CURRENT DATE {current_date}")
             lcd_screen.lcd_display_string(current_time, 1)
             lcd_screen.lcd_display_string(current_date, 2)
             
@@ -388,6 +388,13 @@ def main():
             process_event_reminders(urgency_comparator) # Process event reminders and adjust event dictionary
             while alarm_trigger or get_web_unlock():               
                 print("ALARM LOOP START")
+                today = date.today()
+                time = datetime.now()
+                current_time = str(time.strftime("%I:%M %p"))
+                print(f"CURRENT TIME: {current_time}")
+                current_date = str(today.strftime("%B %d, '%y"))
+                print(f"CURRENT DATE: {current_date}")
+
                 # Time/date pauses on screen as long as alarm is going off
                 print(f"CURRENT ALARM_TRIGGER: {alarm_trigger}")
                 print(f"CURRENT WEB_UNLOCK FLAG: {get_web_unlock()}")
