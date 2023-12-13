@@ -18,9 +18,6 @@ db.init_app(app) # Initializes context for database reads/writes
 
 with app.app_context(): # creates a background environment to keep track of application-level data for the current app instance 
     db.create_all() #idempotent, creates tables if absent but leaves them if they already exist
-    reminder = Reminder.query.all()
-    for reminders in reminder:
-        print(reminders.repeater)
 
 @app.route("/") # When accessing the root website, which shows the alarm submission form
 def index():
