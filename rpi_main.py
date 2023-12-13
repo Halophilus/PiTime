@@ -357,7 +357,7 @@ def main():
         buzzer = speaker = vibration = None # Preemptively create objects associated with each alarm function so that they can be used in the control structures of the loop before being declared as rpi_models objects
         voice_engine = pyttsx3.init(driverName="espeak")
         while True:
-            lcd_screen.clear()
+            lcd_screen.lcd_clear()
             lcd_screen.backlight(1)
             today = date.today()
             time = datetime.now()
@@ -369,7 +369,7 @@ def main():
             print("PROCESSING REMINDERS")
             process_event_reminders(urgency_comparator)
             while alarm_trigger or options_dict['web_unlock']:               
-                lcd_screen.clear()
+                lcd_screen.lcd_clear()
                 today = date.today()
                 time = datetime.now()
                 current_time = time.strftime("%I:%M %p")
@@ -455,7 +455,7 @@ def main():
                         speak(str(current_events_dict[keys][1]), voice_engine)
                         sleep(3)
                 reset()
-            lcd_screen.clear()
+            lcd_screen.lcd_clear()
             lcd_screen.backlight(1)
             today = date.today()
             time = datetime.now()
