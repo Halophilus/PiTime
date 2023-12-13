@@ -482,6 +482,7 @@ def get_ip_address():
         return f"IP Error: {ex}"
 
 if __name__ == "__main__":
+    time.sleep(10)
     ip_address = get_ip_address()
     lcd_screen.lcd_clear()
     lcd_screen.lcd_display_string("IP Address:", 1)
