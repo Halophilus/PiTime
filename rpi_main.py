@@ -462,7 +462,7 @@ def main():
                         sleep(3)
                 lcd_screen.backlight(1)
                 reset()
-            sleep(60)
+            sleep(5)
 
 if __name__ == '__main__':
     main()
