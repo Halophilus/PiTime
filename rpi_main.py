@@ -387,9 +387,10 @@ def main():
             print("PROCESSING REMINDERS")
             process_event_reminders(urgency_comparator) # Process event reminders and adjust event dictionary
             while alarm_trigger or get_web_unlock():               
-                
+                print("ALARM LOOP START")
                 # Time/date pauses on screen as long as alarm is going off
-                
+                print(f"CURRENT ALARM_TRIGGER: {alarm_trigger}")
+                print(f"CURRENT WEB_UNLOCK FLAG: {get_web_unlock()}")
                 # Web unlock handling
                 print("CHECKING WEB UNLOCK")
                 if not get_web_unlock():
