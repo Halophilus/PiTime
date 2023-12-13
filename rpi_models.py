@@ -146,12 +146,12 @@ class Speaker:
         """
         try:
             alarm_file = self.select_random_alarm()
-            # print(alarm_file)
+            print(f"\n\n\n ATTEMPTING TO PLAY: {alarm_file} \n\n\n")
             if alarm_file:
                 self.sound = pygame.mixer.Sound(alarm_file)
-                print(f"Now playing {alarm_file}")
                 while self.playing:
                     self.sound.play()
+                    print(f"\n\n\n NOW PLAYING {alarm_file} \n\n\n")
                     start_time = time.time() # Rounds up quantity into one-second counts 
                     while time.time() - start_time < self.sound.get_length(): # For every tenth of a second in the rounded duration
                         time.sleep(0.1)
@@ -167,7 +167,8 @@ class Speaker:
         """
         try:
             with self.lock:
-                if self.playing:                    
+                if self.playing: 
+                    print("\n\n\n HALTING PLAYBACK \n\n\n")                   
                     if self.sound():
                         self.sound.stop()
                     self.playing = False
@@ -186,10 +187,11 @@ class Speaker:
         try:  # Ask for forgiveness
             script_directory = os.path.dirname(os.path.abspath(__file__))  # Builds an absolute path for the directory associated with the alarm's urgency
             alarm_dir = os.path.join(script_directory, 'alarms', self.urgency)
-            print(f"Folder for {self.urgency} playback selected: {alarm_dir}")
+            print(f"\n\n\nFolder for {self.urgency} playback selected: {alarm_dir}\n\n\n")
             if os.path.isdir(alarm_dir):  # Check if the directory exists
                 alarm_files = os.listdir(alarm_dir)  # List all files in the directory associated with that alarm urgency
                 if alarm_files:  # If there are files in the folder
+                    print(f"\n\n\nRETURNING ALARM PATH: {os.path.join(alarm_dir, random.choice(alarm_files))}\n\n\n")
                     return os.path.join(alarm_dir, random.choice(alarm_files))  # Return the absolute path of a random file in that urgency's folder
             
             return None  # Return None if no valid alarm file is found

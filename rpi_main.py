@@ -366,7 +366,6 @@ def main():
                             'Extremely' : 5}
         buzzer = Buzzer()
         speaker = Speaker('None')
-        speaker.stop()
         vibration = Vibration() # Preemptively create objects associated with each alarm function so that they can be used in the control structures of the loop before being declared as rpi_models objects
         voice_engine = pyttsx3.init(driverName="espeak")
         while True:
