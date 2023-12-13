@@ -247,6 +247,7 @@ def reset():
         current_events_dict = {}
         current_urgency = 'None'
         web_unlock_key_set = False
+        set_web_unlock(False)
         print(f"Reset options dict: {options_dict}")
         print(f"Reset current events dict: {current_events_dict}")
         print(f"Reset urgency: {current_urgency}")
@@ -325,19 +326,22 @@ def set_web_unlock(flag):
     try:
         script_directory = os.path.dirname(os.path.abspath(__file__))
         alarm = os.path.join(script_directory, '.unlock', 'alarm.txt')
+        unlock = os.path.join(script_directory, '.unlock', 'unlock.txt')
         if flag:
-            print("Setting to True, writing '1' to file")
+            print("Setting alarm.txt to True, writing '1' to file")
             write_to_file(alarm, '1')
             chars = string.ascii_letters + string.digits
             random_string = ''.join(random.choice(chars) for i in range(32))
-            write_to_file("unlock.txt", random_string)
-            print(f"Unlock key set to {random_string}")
+            print(f"Generated unlock key in unlock.txt: {random_string}")
+            write_to_file(unlock, random_string)
             web_unlock_key_set = True
             return random_string
         else:
-            print("Setting to False")
+            print("Setting web_unlock state to False")
             write_to_file(alarm, '')
+            write_to_file(unlock, '')  # Clear the unlock key as well
             options_dict['web_unlock'] = False
+            web_unlock_key_set = False
             return None
     except Exception as ex:
         print(f"Error at rpi_main.set_web_unlock(): {ex}")
