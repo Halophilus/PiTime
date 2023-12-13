@@ -365,6 +365,7 @@ def main():
                             'Urgent' : 3,
                             'Very' : 4,
                             'Extremely' : 5}
+        web_unlock_key = ''
         buzzer = Buzzer()
         speaker = Speaker('None')
         speaker.stop()
@@ -419,10 +420,11 @@ def main():
                     print("NO LOCK FOUND")
                     print("DISABLING WEB UNLOCK IN FILE")
                     set_web_unlock(False)
-
+                if web_unlock_key:
+                    print(f"CURRENT WEB_UNLOCK KEY: {web_unlock_key}")
                 # Audio alarm handling
                 print("CHECKING FOR CURRENT URGENCY")
-                if current_urgency != 'None':
+                if current_urgency != 'None' and current_urgency != None:
                     print(f"CURRENT URGENCY: {current_urgency}")
                     if urgency_comparator[current_urgency] > urgency_comparator[speaker.urgency]:
                         print(f"CURRENT URGENCY {current_urgency} GREATER THAN SPEAKER URGENCY {speaker.urgency}")
