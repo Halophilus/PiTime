@@ -1,9 +1,11 @@
 from flask import Flask, render_template, request, redirect, url_for, flash, abort
 from datetime import datetime
-import re, os
+import re, os, socket, time 
+from I2C_LCD_driver import lcd
 from models import db, Event, Reminder
 
 app = Flask(__name__, template_folder=os.path.join(os.path.dirname(os.path.abspath(__file__)), 'templates'))
+lcd_screen = lcd()
 
 image_folder = os.path.join(app.root_path, 'static') # Create a default folder to store images, in this case shared with the static folder
 if not os.path.exists(image_folder):
@@ -461,6 +463,28 @@ def delete_event(event_id):
         flash(f"Event {event_id} does not exist\n")
     return redirect(url_for('events'))
 
+def get_ip_address():
+    '''
+        Returns local IP address of the RPi at startup
+    '''
+    try:
+        print("GET_IP_ADDRESS.APP.PY: Attempting to fetch current IP address")
+        # This creates a socket to retrieve the IP address
+        s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+        # Connects to an external address (does not actually establish a connection)
+        s.connect(("8.8.8.8", 80))
+        ip = s.getsockname()[0]
+        s.close()
+        print(f"Device IP: {ip}")
+        return ip
+    except Exception as ex:
+        return f"IP Error: {ex}"
 
 if __name__ == "__main__":
+    ip_address = get_ip_address()
+    lcd_screen.lcd_clear()
+    lcd_screen.lcd_display_string("IP Address:", 1)
+    lcd_screen.lcd_display_string(ip_address, 2)
+    time.sleep(15)
+    lcd_screen.lcd_clear()
     app.run(host = '0.0.0.0', debug=False)

@@ -9,6 +9,7 @@ from time import sleep
 from datetime import datetime, date
 from dateutil.relativedelta import relativedelta # Adjusts time accurately based on timezones / variable month lengths to ensure consistency in repeater functionality
 
+sleep(20)
 
 app = Flask(__name__)
 app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///alarm-reminder.db'
@@ -19,7 +20,10 @@ lcd_screen = lcd()
 snooze_button = Button(23)
 
 def snooze_button_press(): # Function to be called when the snooze button is pressed (gpiozero)
+    print("Snooze button pressed")
     global alarm_trigger
+    if alarm_trigger:
+        print("Setting alarm_trigger to False")
     alarm_trigger = False
 
 snooze_button.when_pressed = snooze_button_press
