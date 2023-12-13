@@ -299,9 +299,7 @@ def get_web_unlock():
     '''
     print("\n\nRPI_MAIN.get_web_unlock: Trying to retrieve web_unlock flag from file")
     try:
-        script_directory = os.path.dirname(os.path.abspath(__file__))
-        alarm = os.path.join(script_directory, '.unlock', 'alarm.txt')
-        flag = get_from_file(alarm)
+        flag = get_from_file('alarm.txt')
         print(f"Flag pulled from file: {flag}")
         if bool(flag):
             print("Web unlock flag file: True")
@@ -324,22 +322,19 @@ def set_web_unlock(flag):
     global options_dict, web_unlock_key_set
     print(f'\n\nRPI_MAIN.set_web_unlock: Setting web unlock file flag to {flag}')
     try:
-        script_directory = os.path.dirname(os.path.abspath(__file__))
-        alarm = os.path.join(script_directory, '.unlock', 'alarm.txt')
-        unlock = os.path.join(script_directory, '.unlock', 'unlock.txt')
         if flag:
             print("Setting alarm.txt to True, writing '1' to file")
-            write_to_file(alarm, '1')
+            write_to_file('alarm.txt', '1')
             chars = string.ascii_letters + string.digits
             random_string = ''.join(random.choice(chars) for i in range(32))
             print(f"Generated unlock key in unlock.txt: {random_string}")
-            write_to_file(unlock, random_string)
+            write_to_file('unlock.txt', random_string)
             web_unlock_key_set = True
             return random_string
         else:
             print("Setting web_unlock state to False")
-            write_to_file(alarm, '')
-            write_to_file(unlock, '')  # Clear the unlock key as well
+            write_to_file('alarm.txt', '')
+            write_to_file('unlock.txt', '')  # Clear the unlock key as well
             options_dict['web_unlock'] = False
             web_unlock_key_set = False
             return None
@@ -412,7 +407,7 @@ def main():
                         print("WEB LOCK ENABLED")
                         print("GENERATING NEW WEB UNLOCK KEY")
                         web_unlock_key = set_web_unlock(True)
-                        print(f"WEB UNLOCK KEY: {web_unlock_key}")
+                        print(f"WEB UNLOCK KEY: {get_from_file('unlock.txt')}")
                         print("PROCESSING EVENT REMINDERS")
                         process_event_reminders(urgency_comparator)
                         random_string = set_web_unlock(options_dict['web_unlock'])
