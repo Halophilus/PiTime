@@ -9,7 +9,7 @@ from time import sleep
 from datetime import datetime, date
 from dateutil.relativedelta import relativedelta # Adjusts time accurately based on timezones / variable month lengths to ensure consistency in repeater functionality
 
-sleep(20)
+# sleep(20)
 
 app = Flask(__name__)
 app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///alarm-reminder.db'
@@ -419,7 +419,7 @@ def main():
                     print("BUZZER OPTION ENABLED")
                     if not buzzer:
                         print("CREATING NEW BUZZER OBJECT")
-                        buzzer = Buzzer(1)
+                        buzzer = Buzzer()
                     buzzer.start()
                 else:
                     print("BUZZER OPTION DISABLED")
@@ -432,7 +432,7 @@ def main():
                     print("VIBRATION ENABLED")
                     if not vibration:
                         print("CREATING VIBRATION OBJECT")
-                        vibration = Vibration(1)
+                        vibration = Vibration()
                     vibration.start()
                 else:
                     print("VIBRATION DISABLED")
