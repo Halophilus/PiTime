@@ -346,6 +346,7 @@ def speak(speech, engine):
     '''
         Text to speech engine,
     '''
+    print(f"SPEAK.APP.PY: speaking {speech}")
     engine.say(speech)
     engine.runAndWait()
 
@@ -440,6 +441,7 @@ def main():
                 print("END OF ALARM LOOP")
             else:
                 # Disengage all active devices/protocols
+                print("ALARM LOOP TERMINATED")
                 vibration.stop()
                 buzzer.stop()
                 speaker.update_urgency('None')
@@ -447,8 +449,9 @@ def main():
                 lcd_screen.lcd_clear()
                 lcd_screen.backlight(1)
                 if number_of_events > 0:
-                    lcd_screen.lcd_display_string(f"{number_of_events}", 1)
-                    speak(f'You have {number_of_events} events currently')
+                    lcd_screen.lcd_display_string(f"{number_of_events} Events" , 1)
+                    speak(f'You have {number_of_events} events currently', voice_engine)
+                    print(f"DISPLAYING: {number_of_events} # Number of events")
                     for keys in current_events_dict:
                         speak(f"Event number {keys}", voice_engine)
                         speak(str(current_events_dict[keys][0]), voice_engine)
