@@ -461,7 +461,7 @@ def main():
                 number_of_events = len(current_events_dict)
                 lcd_screen.backlight(1)
                 if number_of_events > 0:
-                    lcd.lcd_clear()
+                    lcd_screen.lcd_clear()
                     lcd_screen.lcd_display_string(f"{number_of_events} Events" , 1)
                     speak(f'You have {number_of_events} events currently', voice_engine)
                     print(f"DISPLAYING: {number_of_events} # Number of events")
