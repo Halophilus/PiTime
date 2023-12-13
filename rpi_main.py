@@ -456,7 +456,6 @@ def main():
                         speak(str(current_events_dict[keys][0]), voice_engine)
                         speak(str(current_events_dict[keys][1]), voice_engine)
                         sleep(3)
-                lcd_screen.lcd_clear()
                 lcd_screen.backlight(1)
                 reset()
             sleep(60)
