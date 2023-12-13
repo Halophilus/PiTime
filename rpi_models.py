@@ -167,7 +167,8 @@ class Speaker:
         try:
             with self.lock:
                 if self.playing:                    
-                    self.sound.stop()
+                    if self.sound():
+                        self.sound.stop()
                     self.playing = False
                     if self.thread:
                         self.thread.join()

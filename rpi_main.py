@@ -399,11 +399,8 @@ def main():
                 print(f"CURRENT ALARM_TRIGGER: {alarm_trigger}")
                 print(f"CURRENT WEB_UNLOCK FLAG: {get_web_unlock()}")
                 # Web unlock handling
+                
                 print("CHECKING WEB UNLOCK")
-                if not get_web_unlock():
-                    print("NO LOCK FOUND")
-                    print("DISABLING WEB UNLOCK IN FILE")
-                    set_web_unlock(False)
                 if options_dict["web_unlock"]:
                     if not web_unlock_key_set:
                         print("WEB LOCK ENABLED")
@@ -417,7 +414,11 @@ def main():
                         lcd_screen.lcd_display_string(split_strings[0], 1)
                         lcd_screen.lcd_display_string(split_strings[1], 2)
                         lcd_screen.backlight(0)
-                
+                if not get_web_unlock():
+                    print("NO LOCK FOUND")
+                    print("DISABLING WEB UNLOCK IN FILE")
+                    set_web_unlock(False)
+
                 # Audio alarm handling
                 print("CHECKING FOR CURRENT URGENCY")
                 if current_urgency != 'None':
@@ -454,9 +455,9 @@ def main():
                 buzzer.stop()
                 speaker.update_urgency('None')
                 number_of_events = len(current_events_dict)
-                lcd_screen.lcd_clear()
                 lcd_screen.backlight(1)
                 if number_of_events > 0:
+                    lcd.lcd_clear()
                     lcd_screen.lcd_display_string(f"{number_of_events} Events" , 1)
                     speak(f'You have {number_of_events} events currently', voice_engine)
                     print(f"DISPLAYING: {number_of_events} # Number of events")
