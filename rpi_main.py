@@ -460,7 +460,9 @@ def main():
             today = date.today()
             time = datetime.now()
             current_time = time.strftime("%I:%M %p")
+            print(f"Current time: {current_time}")
             current_date = today.strftime("%B %d, '%y")
+            print(f"Current date: {current_date}")
             sleep(60)
 
 if __name__ == '__main__':
