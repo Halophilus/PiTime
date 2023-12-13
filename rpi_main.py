@@ -454,6 +454,7 @@ def main():
             else:
                 # Disengage all active devices/protocols
                 print("ALARM LOOP TERMINATED")
+                web_unlock_key = ''
                 vibration.stop()
                 buzzer.stop()
                 speaker.update_urgency('None')
