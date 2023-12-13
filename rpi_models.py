@@ -3,7 +3,7 @@ import random
 import time
 import pygame
 import threading
-from gpiozero import Button, LED, Buzzer
+from gpiozero import LED, Buzzer
 
 class Buzzer: # active piezoelectric buzzer for droning alarm sound
     def __init__(self):
@@ -15,7 +15,6 @@ class Buzzer: # active piezoelectric buzzer for droning alarm sound
             pin (int), GPIO pin number assigned to the vibration module        
         '''
         self.buzzer = Buzzer(17)
-        print(f"BUZZER DECLARED AT PIN {pin}")
         self.buzzing = False
         self.thread = None
         self.lock = threading.Lock()
@@ -142,7 +141,7 @@ class Speaker:
 
     def play_loop(self):
         """
-        Plays the selected alarm sound in a loop.
+            Plays the selected alarm sound in a loop.
             Can be disengaged at any time within a 0.1 second interval if the call to close the thread is made.
         """
         try:

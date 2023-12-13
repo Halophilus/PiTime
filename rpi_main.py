@@ -1,4 +1,4 @@
-import os, random, string, textwrap
+import os, random, string, textwrap, pyttsx3
 from I2C_LCD_driver import lcd
 from gpiozero import Button
 from flask import Flask
@@ -198,6 +198,10 @@ def process_event_reminders(urgency_comparator):
     '''
     global alarm_trigger, options_dict, current_events_dict, current_urgency
     print(f"\n\nRPI_MAIN.process_event_reminders(): Trying to process event reminders")
+    print(f"Current alarm trigger: {alarm_trigger}")
+    print(f"Current options_dict: {options_dict}")
+    print(f"Current events_dict: {current_events_dict}")
+    print(f"Current urgency: {current_urgency}")
     try:
         print(f"Current alarm trigger: {alarm_trigger}")
         active_reminders = fetch_active_reminders()
@@ -329,11 +333,12 @@ def set_web_unlock(flag):
     except Exception as ex:
         print(f"Error at rpi_main.set_web_unlock(): {ex}")
 
-def speak(speech):
+def speak(speech, engine):
     '''
-    Hitherto unresolved text-to-speech application
+        Text to speech engine,
     '''
-    print(speech)
+    engine.say(speech)
+    engine.runAndWait()
 
 def main():
     '''
@@ -350,11 +355,27 @@ def main():
                             'Very' : 4,
                             'Extremely' : 5}
         buzzer = speaker = vibration = None # Preemptively create objects associated with each alarm function so that they can be used in the control structures of the loop before being declared as rpi_models objects
+        voice_engine = pyttsx3.init(driverName="espeak")
         while True:
+            lcd_screen.clear()
+            lcd_screen.backlight(1)
+            today = date.today()
+            time = datetime.now()
+            current_time = time.strftime("%I:%M %p")
+            current_date = today.strftime("%B %d, '%y")
+            lcd_screen.lcd_display_string(current_time, 1)
+            lcd_screen.lcd_display_string(current_date, 2)
             print("MAIN LOOP BEGIN")
             print("PROCESSING REMINDERS")
             process_event_reminders(urgency_comparator)
             while alarm_trigger or options_dict['web_unlock']:               
+                lcd_screen.clear()
+                today = date.today()
+                time = datetime.now()
+                current_time = time.strftime("%I:%M %p")
+                current_date = today.strftime("%B %d, '%y")
+                lcd_screen.lcd_display_string(current_time, 1)
+                lcd_screen.lcd_display_string(current_date, 2)
                 print("CHECKING WEB UNLOCK")
                 if not get_web_unlock():
                     print("NO LOCK FOUND")
@@ -421,6 +442,7 @@ def main():
                     print(f"WEB UNLOCK KEY: {web_unlock_key}")
                 print("PROCESSING EVENT REMINDERS")
                 process_event_reminders(urgency_comparator)
+                print("WAITING FOR LOOP")
                 sleep(30)
                 print("END OF ALARM LOOP")
             else:
@@ -428,9 +450,9 @@ def main():
                 if number_of_events > 0:
                     speak(f'You have {number_of_events} events currently')
                     for keys in current_events_dict:
-                        speak(f"Event number {keys}")
-                        speak(current_events_dict[keys][0])
-                        speak(current_events_dict[keys][1])
+                        speak(f"Event number {keys}", voice_engine)
+                        speak(str(current_events_dict[keys][0]), voice_engine)
+                        speak(str(current_events_dict[keys][1]), voice_engine)
                         sleep(3)
                 reset()
             lcd_screen.clear()

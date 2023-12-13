@@ -1,7 +1,6 @@
 from flask import Flask, render_template, request, redirect, url_for, flash, abort
 from datetime import datetime
 import re, os
-from glob import glob
 from models import db, Event, Reminder
 
 app = Flask(__name__, template_folder=os.path.join(os.path.dirname(os.path.abspath(__file__)), 'templates'))
