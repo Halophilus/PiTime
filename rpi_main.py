@@ -100,7 +100,7 @@ def fetch_active_reminders():
         current_time = datetime.now()
         query_object = Reminder.query.join(Event).filter(Reminder.reminder_lock == False)\
             .filter(Reminder.date_time <= current_time).all()
-        print(f"{query_object.count()} active reminders found")
+        print(f"Active reminders found")
         for reminders in query_object:
             print(f"{reminders}")
         return query_object
