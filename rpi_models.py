@@ -149,6 +149,7 @@ class Speaker:
             # print(alarm_file)
             if alarm_file:
                 self.sound = pygame.mixer.Sound(alarm_file)
+                print(f"Now playing {alarm_file}")
                 while self.playing:
                     self.sound.play()
                     start_time = time.time() # Rounds up quantity into one-second counts 
@@ -185,7 +186,7 @@ class Speaker:
         try:  # Ask for forgiveness
             script_directory = os.path.dirname(os.path.abspath(__file__))  # Builds an absolute path for the directory associated with the alarm's urgency
             alarm_dir = os.path.join(script_directory, 'alarms', self.urgency)
-            
+            print(f"Folder for {self.urgency} playback selected: {alarm_dir}")
             if os.path.isdir(alarm_dir):  # Check if the directory exists
                 alarm_files = os.listdir(alarm_dir)  # List all files in the directory associated with that alarm urgency
                 if alarm_files:  # If there are files in the folder
