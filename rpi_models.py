@@ -38,7 +38,7 @@ class Buzzer: # active piezoelectric buzzer for droning alarm sound
             try:
                 if self.buzzing:
                     self.buzzing = False
-                    self._buzzer.off()
+                    self.buzzer.off()
                     self.thread.join() # Terminates all current threads related to this object
             except Exception as ex:
                 print(f"Error in Buzzer stop method: {ex}")
