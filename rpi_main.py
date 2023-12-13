@@ -368,6 +368,7 @@ def main():
         buzzer = Buzzer()
         speaker = Speaker('None')
         speaker.stop()
+        set_web_unlock(False)
         vibration = Vibration() # Preemptively create objects associated with each alarm function so that they can be used in the control structures of the loop before being declared as rpi_models objects
         voice_engine = pyttsx3.init(driverName="espeak")
         while True:
@@ -452,7 +453,6 @@ def main():
             else:
                 # Disengage all active devices/protocols
                 print("ALARM LOOP TERMINATED")
-                web_unlock_key = ''
                 vibration.stop()
                 buzzer.stop()
                 speaker.update_urgency('None')
