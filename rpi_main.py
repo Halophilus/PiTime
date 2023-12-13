@@ -45,7 +45,7 @@ def initialize_globals():
             current_urgency (str), the current maximum urgency of the triggered alarms, used to keep track of changes in urgency to control whether or not a new Speaker object is declared
     '''
     print("\n\nRPI_MAIN.initialize_globals: Intializing globals")
-    global alarm_trigger, options_dict, current_events_dict, current_urgency
+    global alarm_trigger, options_dict, current_events_dict, current_urgency, web_unlock_key_set
     try:
         alarm_trigger = False
         options_dict = {'buzzer': False, # Global dictionary for keeping track of triggered functions
@@ -54,6 +54,7 @@ def initialize_globals():
                         'alarm': {'None'}}
         current_events_dict = {}
         current_urgency = 'None'
+        web_unlock_key_set = False
     except Exception as ex:
         print(f"Error initializing globals in rpi_main: {ex}\n")
 
@@ -230,12 +231,13 @@ def reset():
     '''
     Resets global bookkeeping variables to default states
     '''
-    global options_dict, alarm_trigger, current_events_dict, current_urgency
+    global options_dict, alarm_trigger, current_events_dict, current_urgency, web_unlock_key_set
     alarm_trigger = False
     print("\n\nRPI_MAIN: Trying to reset default values")
     print(f"Current options dict: {options_dict}\n")
     print(f"Current events dictionary: {current_events_dict}\n")
     print(f"Current urgency: {current_urgency}")
+    print(f"Current web_unlock_key_set: {web_unlock_key_set}")
     try:
         options_dict = {'buzzer':False,
                         'vibration':False,
@@ -244,9 +246,11 @@ def reset():
                         'alarm':{'None'}} # Only original entries are retained to simplify parsing
         current_events_dict = {}
         current_urgency = 'None'
+        web_unlock_key_set = False
         print(f"Reset options dict: {options_dict}")
         print(f"Reset current events dict: {current_events_dict}")
         print(f"Reset urgency: {current_urgency}")
+        print(f"Reset web_unlock_key_set: {web_unlock_key_set}")
     except Exception as ex:
         print(f"An error occurred in rpi_main.reset(): {ex}")
 
@@ -316,7 +320,7 @@ def set_web_unlock(flag):
     Returns:
         random_string (str) 32 random characters to be used for the web unlock
     '''
-    global options_dict
+    global options_dict, web_unlock_key_set
     print(f'\n\nRPI_MAIN.set_web_unlock: Setting web unlock file flag to {flag}')
     try:
         script_directory = os.path.dirname(os.path.abspath(__file__))
@@ -328,6 +332,7 @@ def set_web_unlock(flag):
             random_string = ''.join(random.choice(chars) for i in range(32))
             write_to_file("unlock.txt", random_string)
             print(f"Unlock key set to {random_string}")
+            web_unlock_key_set = True
             return random_string
         else:
             print("Setting to False")
@@ -358,9 +363,13 @@ def main():
                             'Urgent' : 3,
                             'Very' : 4,
                             'Extremely' : 5}
-        buzzer = speaker = vibration = None # Preemptively create objects associated with each alarm function so that they can be used in the control structures of the loop before being declared as rpi_models objects
+        buzzer = Buzzer()
+        speaker = Speaker('None')
+        speaker.stop()
+        vibration = Vibration() # Preemptively create objects associated with each alarm function so that they can be used in the control structures of the loop before being declared as rpi_models objects
         voice_engine = pyttsx3.init(driverName="espeak")
         while True:
+            # Displaying current date and time on LCD
             lcd_screen.lcd_clear()
             lcd_screen.backlight(1)
             today = date.today()
@@ -371,96 +380,80 @@ def main():
             print(f"Current date: {current_date}")
             lcd_screen.lcd_display_string(current_time, 1)
             lcd_screen.lcd_display_string(current_date, 2)
-            print("MAIN LOOP BEGIN")
+            
+            # Initiating main loop
+            print("MAIN LOOP START")
             print("PROCESSING REMINDERS")
-            process_event_reminders(urgency_comparator)
-            while alarm_trigger or options_dict['web_unlock']:               
-                lcd_screen.lcd_clear()
-                today = date.today()
-                time = datetime.now()
-                current_time = time.strftime("%I:%M %p")
-                current_date = today.strftime("%B %d, '%y")
-                lcd_screen.lcd_display_string(current_time, 1)
-                lcd_screen.lcd_display_string(current_date, 2)
+            process_event_reminders(urgency_comparator) # Process event reminders and adjust event dictionary
+            while alarm_trigger or not get_web_unlock():               
+                
+                # Time/date pauses on screen as long as alarm is going off
+                
+                # Web unlock handling
                 print("CHECKING WEB UNLOCK")
                 if not get_web_unlock():
                     print("NO LOCK FOUND")
-                    print("WEB UNLOCK FLAG SET TO FALSE")
-                    print("SETTING LOCAL WEB UNLOCK FLAG TO FALSE")
+                    print("DISABLING WEB UNLOCK IN FILE")
                     set_web_unlock(False)
-                elif options_dict["web_unlock"]:
-                    print("WEB LOCK ENABLED")
-                    print("GENERATING NEW WEB UNLOCK KEY")
-                    web_unlock_key = set_web_unlock(True) # Generates a new web_unlock key every 30 seconds
-                    print(f"WEB UNLOCK KEY: {web_unlock_key}")
-                    print("PROCESSING EVENT REMINDERS")
-                    process_event_reminders(urgency_comparator)
-                    random_string = set_web_unlock(options_dict['web_unlock'])
-                    split_strings = textwrap.wrap(random_string, 16)
-                    lcd_screen.lcd_display_string(split_strings[0], 1)
-                    lcd_screen.lcd_display_string(split_strings[1], 2)
-                    lcd_screen.backlight(0)
+                if options_dict["web_unlock"]:
+                    if not web_unlock_key_set:
+                        print("WEB LOCK ENABLED")
+                        print("GENERATING NEW WEB UNLOCK KEY")
+                        web_unlock_key = set_web_unlock(True)
+                        print(f"WEB UNLOCK KEY: {web_unlock_key}")
+                        print("PROCESSING EVENT REMINDERS")
+                        process_event_reminders(urgency_comparator)
+                        random_string = set_web_unlock(options_dict['web_unlock'])
+                        split_strings = textwrap.wrap(random_string, 16)
+                        lcd_screen.lcd_display_string(split_strings[0], 1)
+                        lcd_screen.lcd_display_string(split_strings[1], 2)
+                        lcd_screen.backlight(0)
+                
+                # Audio alarm handling
                 print("CHECKING FOR CURRENT URGENCY")
                 if current_urgency != 'None':
                     print(f"CURRENT URGENCY: {current_urgency}")
-                    if not speaker:
-                        print("STARTING A NEW SPEAKER OBJECT")
-                        speaker = Speaker(current_urgency)
-                        speaker.start()
                     if urgency_comparator[current_urgency] > urgency_comparator[speaker.urgency]:
                         print(f"CURRENT URGENCY {current_urgency} GREATER THAN SPEAKER URGENCY {speaker.urgency}")
-                        speaker.stop()
-                        speaker = Speaker(current_urgency)
-                        speaker.start()
-                        print(f"PROCESSING REMINDERS")
-                        process_event_reminders()
+                        print(f"UPDATING CURRENT URGENCY TO {current_urgency}")
+                        speaker.update_urgency(current_urgency)
+                
+                # Buzzer handling
                 print("CHECKING FOR BUZZER")
                 if options_dict['buzzer']:
                     print("BUZZER OPTION ENABLED")
-                    if not buzzer:
-                        print("CREATING NEW BUZZER OBJECT")
-                        buzzer = Buzzer()
                     buzzer.start()
-                else:
-                    print("BUZZER OPTION DISABLED")
-                    if buzzer:
-                        print("STOPPING BUZZER")
-                        buzzer.stop()
-                        buzzer.buzzer.close()
+
+                # Vibration handling    
                 print("CHECKING FOR VIBRATION")
                 if options_dict['vibration']:
                     print("VIBRATION ENABLED")
-                    if not vibration:
-                        print("CREATING VIBRATION OBJECT")
-                        vibration = Vibration()
                     vibration.start()
-                else:
-                    print("VIBRATION DISABLED")
-                    if vibration:
-                        print("STOPPING VIBRATION")
-                        vibration.stop()
-                        vibration.vibration.close()
-                print("CHECKING FOR WEB LOCK")
-                if options_dict['web_unlock']:
-                    print("WEB LOCK ENABLED")
-                    print("GENERATING NEW WEB UNLOCK KEY")
-                    web_unlock_key = set_web_unlock(True) # Generates a new web_unlock key every 30 seconds
-                    print(f"WEB UNLOCK KEY: {web_unlock_key}")
+
+                # Processing event reminders before next loop
                 print("PROCESSING EVENT REMINDERS")
                 process_event_reminders(urgency_comparator)
+                
+                # Sleep statement between checks
                 print("WAITING FOR LOOP")
-                sleep(30)
+                sleep(15)
                 print("END OF ALARM LOOP")
             else:
+                # Disengage all active devices/protocols
+                vibration.stop()
+                buzzer.stop()
+                speaker.update_urgency('None')
                 number_of_events = len(current_events_dict)
+                lcd_screen.lcd_clear()
+                lcd_screen.backlight(1)
                 if number_of_events > 0:
+                    lcd_screen.lcd_display_string(f"{number_of_events}", 1)
                     speak(f'You have {number_of_events} events currently')
                     for keys in current_events_dict:
                         speak(f"Event number {keys}", voice_engine)
                         speak(str(current_events_dict[keys][0]), voice_engine)
                         speak(str(current_events_dict[keys][1]), voice_engine)
                         sleep(3)
-                lcd_screen.backlight(1)
                 reset()
             sleep(5)
 

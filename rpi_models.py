@@ -50,10 +50,10 @@ class Buzzer: # active piezoelectric buzzer for droning alarm sound
     def buzz(self):
         while self.buzzing:
             self.buzzer.on()
-            print("BUZZING ON")
+            # print("BUZZING ON")
             time.sleep(1)
             self.buzzer.off()
-            print("BUZZING OFF")
+            # print("BUZZING OFF")
             time.sleep(1.5)
 
 class Vibration: # 5V vibration module driven by a transistor and 3.3V logic
@@ -104,10 +104,10 @@ class Vibration: # 5V vibration module driven by a transistor and 3.3V logic
         '''
         while self.vibrating:
             self.vibration.on()
-            print("VIBRATING ON")
+            # print("VIBRATING ON")
             time.sleep(1)
             self.vibration.off()
-            print("VIBRATING OFF")
+            # print("VIBRATING OFF")
             time.sleep(1.5)
 
 class Speaker:
@@ -166,10 +166,11 @@ class Speaker:
         """
         try:
             with self.lock:
-                self.sound.stop()
-                self.playing = False
-                if self.thread:
-                    self.thread.join()
+                if self.playing:                    
+                    self.sound.stop()
+                    self.playing = False
+                    if self.thread:
+                        self.thread.join()
         except Exception as ex:
             print(f"Error in Speaker.stop: {ex}")
 
@@ -192,5 +193,13 @@ class Speaker:
             return None  # Return None if no valid alarm file is found
         except Exception as ex:
             print(f"Error in Speaker.select_random_alarm: {ex}")
+    
+    def update_urgency(self, new_urgency):
+        '''
+            Updates the urgency and starts playing the new audio
+        '''
+        self.stop()
+        self.urgency = new_urgency
+        self.start()
 
 
