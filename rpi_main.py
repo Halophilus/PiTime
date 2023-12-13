@@ -303,6 +303,7 @@ def get_web_unlock():
         print(f"Flag pulled from file: {flag}")
         if bool(flag):
             print("Web unlock flag file: True")
+            set_web_unlock(True)
             return True
         print("Web unlock flag file: False")
         return False
@@ -364,7 +365,6 @@ def main():
                             'Urgent' : 3,
                             'Very' : 4,
                             'Extremely' : 5}
-        web_unlock_key = ''
         buzzer = Buzzer()
         speaker = Speaker('None')
         speaker.stop()
@@ -406,7 +406,7 @@ def main():
                     if not web_unlock_key_set:
                         print("WEB LOCK ENABLED")
                         print("GENERATING NEW WEB UNLOCK KEY")
-                        web_unlock_key = set_web_unlock(True)
+                        set_web_unlock(True)
                         print(f"WEB UNLOCK KEY: {get_from_file('unlock.txt')}")
                         print("PROCESSING EVENT REMINDERS")
                         process_event_reminders(urgency_comparator)
@@ -415,12 +415,11 @@ def main():
                         lcd_screen.lcd_display_string(split_strings[0], 1)
                         lcd_screen.lcd_display_string(split_strings[1], 2)
                         lcd_screen.backlight(0)
+                    print(f"CURRENT WEB_UNLOCK KEY: {get_from_file('unlock.txt')}")
                 if not get_web_unlock():
                     print("NO LOCK FOUND")
                     print("DISABLING WEB UNLOCK IN FILE")
                     set_web_unlock(False)
-                if web_unlock_key:
-                    print(f"CURRENT WEB_UNLOCK KEY: {web_unlock_key}")
                 # Audio alarm handling
                 print("CHECKING FOR CURRENT URGENCY")
                 if current_urgency != 'None' and current_urgency != None:
