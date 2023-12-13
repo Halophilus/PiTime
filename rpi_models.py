@@ -1,8 +1,4 @@
-import os
-import random
-import time
-import pygame
-import threading
+import os, random, time, pygame, threading
 from gpiozero import LED, Buzzer as GPIOBuzzer
 
 class Buzzer: # active piezoelectric buzzer for droning alarm sound
@@ -163,13 +159,13 @@ class Speaker:
     def stop(self):
         """
         Stops the currently playing sound.
-            Closes thread and takes down self.playing flag
+        Closes thread and takes down self.playing flag
         """
         try:
             with self.lock:
-                if self.playing: 
-                    print("\n\n\n HALTING PLAYBACK \n\n\n")                   
-                    if self.sound():
+                if self.playing:
+                    print("\n\n\n HALTING PLAYBACK \n\n\n")
+                    if self.sound:
                         self.sound.stop()
                     self.playing = False
                     if self.thread:
