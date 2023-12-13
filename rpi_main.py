@@ -303,7 +303,6 @@ def get_web_unlock():
         print(f"Flag pulled from file: {flag}")
         if bool(flag):
             print("Web unlock flag file: True")
-            set_web_unlock(True)
             return True
         print("Web unlock flag file: False")
         return False
@@ -416,6 +415,7 @@ def main():
                         lcd_screen.lcd_display_string(split_strings[0], 1)
                         lcd_screen.lcd_display_string(split_strings[1], 2)
                         lcd_screen.backlight(0)
+                        web_unlock_key_set
                     print(f"CURRENT WEB_UNLOCK KEY: {get_from_file('unlock.txt')}")
                 if not get_web_unlock():
                     print("NO LOCK FOUND")
