@@ -245,7 +245,9 @@ def key_check(key):
         script_directory = os.path.dirname(os.path.abspath(__file__)) # fetches current working directory
         unlock = os.path.join(script_directory, '.unlock', 'unlock.txt') # builds a relative path
         unlock_key = read_unlock_val(unlock) # Reads in web_unlock key
-        print(f"Actual unlock key: {unlock_key}")
+        key = key.rstrip()
+        print(f"Actual unlock key: {unlock_key}, Length: {len(unlock_key)}")
+        print(f"Received key: {repr(key)}, Length: {len(key)}")  # Debug representation of the received key
         if key == unlock_key: # If the value entered in the URL matches the key stored in .unlock
             print("Web unlock engaged\n")
             return clear_web_unlock()  # Call the function to unlock the web_unlock functionality
@@ -289,8 +291,10 @@ def read_unlock_val(file):
         print(f"Key file directory: {unlock_file_path}")
         print("Attempting to read key file")
         with open(unlock_file_path, 'r') as file: # reads key from file
-            key_content = file.read().strip()
+            key_content = file.read().rstrip()
             print(f"Unlock key: {key_content}\n")
+            debug_key_content = repr(key_content)  # Debug representation of the key
+            print(f"Unlock key (raw): {debug_key_content}, Length: {len(key_content)}")
             return key_content # returns key minus leading white space
     except Exception as ex:
         print(f"An error occurred in read_unlock_val.app.py: {ex}\n")
