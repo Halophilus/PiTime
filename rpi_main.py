@@ -9,7 +9,7 @@ from time import sleep
 from datetime import datetime, date
 from dateutil.relativedelta import relativedelta # Adjusts time accurately based on timezones / variable month lengths to ensure consistency in repeater functionality
 
-# sleep(20)
+sleep(25)
 
 app = Flask(__name__)
 app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///alarm-reminder.db'
