@@ -3,7 +3,7 @@ import random
 import time
 import pygame
 import threading
-from gpiozero import LED, Buzzer
+from gpiozero import LED, Buzzer as GPIOBuzzer
 
 class Buzzer: # active piezoelectric buzzer for droning alarm sound
     def __init__(self):
@@ -14,7 +14,7 @@ class Buzzer: # active piezoelectric buzzer for droning alarm sound
         Args:
             pin (int), GPIO pin number assigned to the vibration module        
         '''
-        self.buzzer = Buzzer(17)
+        self.buzzer = GPIOBuzzer(17)
         self.buzzing = False
         self.thread = None
         self.lock = threading.Lock()
@@ -42,8 +42,8 @@ class Buzzer: # active piezoelectric buzzer for droning alarm sound
             try:
                 if self.buzzing:
                     self.buzzing = False
+                    self._buzzer.off()
                     self.thread.join() # Terminates all current threads related to this object
-                    self.buzzer.off()
             except Exception as ex:
                 print(f"Error in Buzzer stop method: {ex}")
 
@@ -66,7 +66,6 @@ class Vibration: # 5V vibration module driven by a transistor and 3.3V logic
             pin (int), GPIO pin number assigned to the vibration module
         '''
         self.vibration = LED(25)
-        print(f"VIBRATION DECLARED AT PIN {pin}")
         self.vibrating = False
         self.thread = None
         self.lock = threading.Lock()
@@ -123,6 +122,7 @@ class Speaker:
         self.urgency = urgency
         self.thread = None
         self.lock = threading.Lock()
+        self.sound = None
 
     def start(self):
         """
@@ -178,16 +178,19 @@ class Speaker:
         Selects a random alarm file from the directory associated with the alarm's urgency
 
         Returns:
-            str: The path to the selected alarm file.
+            str: The path to the selected alarm file, or None if no valid alarm is found.
         """
-        try: # Ask for forgiveness
-            script_directory = os.path.dirname(os.path.abspath(__file__)) # Builds an absolute path for the directory associated with the alarm's urgency
+        try:  # Ask for forgiveness
+            script_directory = os.path.dirname(os.path.abspath(__file__))  # Builds an absolute path for the directory associated with the alarm's urgency
             alarm_dir = os.path.join(script_directory, 'alarms', self.urgency)
-            if os.path.isdir(alarm_dir): # if the path is valid
-                alarm_files = os.listdir(alarm_dir) # Returns a list of all of the files in that directory associated with that alarm urgency
-                if alarm_files: # If there is anything in the folder
-                    return os.path.join(alarm_dir, random.choice(alarm_files)) # Return the absolute path of a random file in that urgency's folder
-            return None # Or return nothing
+            
+            if os.path.isdir(alarm_dir):  # Check if the directory exists
+                alarm_files = os.listdir(alarm_dir)  # List all files in the directory associated with that alarm urgency
+                if alarm_files:  # If there are files in the folder
+                    return os.path.join(alarm_dir, random.choice(alarm_files))  # Return the absolute path of a random file in that urgency's folder
+            
+            return None  # Return None if no valid alarm file is found
         except Exception as ex:
             print(f"Error in Speaker.select_random_alarm: {ex}")
+
 
