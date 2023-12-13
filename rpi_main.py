@@ -328,7 +328,7 @@ def set_web_unlock(flag):
         if flag:
             print("Setting to True, writing '1' to file")
             write_to_file(alarm, '1')
-            chars = string.ascii_letters + string.digits + string.punctuation
+            chars = string.ascii_letters + string.digits
             random_string = ''.join(random.choice(chars) for i in range(32))
             write_to_file("unlock.txt", random_string)
             print(f"Unlock key set to {random_string}")
@@ -358,7 +358,8 @@ def main():
     with app.app_context(): # Manually create app context in the absence of Flask routes so that the app doesn't have to be destroyed and recreated for every check
         print("\n\n\nINITIALIZING MAIN SCRIPT")
         initialize_globals()
-        urgency_comparator = {'None' : 0, #  Means of quantifying/comparing urgency
+        urgency_comparator = { None : 0,
+                            'None' : 0, #  Means of quantifying/comparing urgency
                             'Not at all' : 1,
                             'Somewhat' : 2,
                             'Urgent' : 3,
@@ -399,7 +400,7 @@ def main():
                 print(f"CURRENT ALARM_TRIGGER: {alarm_trigger}")
                 print(f"CURRENT WEB_UNLOCK FLAG: {get_web_unlock()}")
                 # Web unlock handling
-                
+
                 print("CHECKING WEB UNLOCK")
                 if options_dict["web_unlock"]:
                     if not web_unlock_key_set:
