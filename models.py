@@ -14,7 +14,7 @@ class Event(db.Model): # Objects are not being stored in memory and thus do not 
     title = db.Column(db.String(120), nullable=False)
     description = db.Column(db.String(500))
     event_lock = db.Column(db.Boolean, default = False)
-    reminders = db.relationship('Reminder', backref='event', lazy='dynamic') # Enabeles a 1 event to many reminders configuration
+    reminders = db.relationship('Reminder', backref='event', lazy='dynamic') # Enables a 1 event to many reminders configuration
 
     def __repr__(self):
         return f"<Event(id='{self.id}', title='{self.title}')>"
