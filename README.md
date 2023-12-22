@@ -255,7 +255,7 @@ sudo reboot
         - `description`, string of 500 chars or less
         - `event_lock`, boolean determining if an `Event` object is active or not
         - `reminders`, `Reminder` objects back reference a parent `Event` object in a one to many Events to Reminders dynamic relationship. This allows an Event's connected reminders to be queryable from the original `Event` object.
-    -**`Reminder`**
+    - **`Reminder`**
         - `id`
         - `date_time`, datetime object indicating timepoint associated with alarm trigger
         - `reminder_lock`, boolean indicating if an alarm is inactive or not.
@@ -420,7 +420,7 @@ If the user enters an incorrect key, this message will be displayed:
 
 ## Contact Information
 
-If you encounter issues or have questions regarding the setup or operation of this system, please reach out to [Halophilus](email:benshaw@halophil.us).
+If you encounter issues or have questions regarding the setup or operation of this system, please reach out to [Halophilus](email:benshaw@halophil.us) .
 
 ---
 
