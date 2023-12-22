@@ -420,7 +420,7 @@ If the user enters an incorrect key, this message will be displayed:
 
 ## Contact Information
 
-If you encounter issues or have questions regarding the setup or operation of this system, please reach out to [Halophilus](email:benshaw@halophil.us) .
+If you encounter issues or have questions regarding the setup or operation of this system, please reach out to [Halophilus](email:benshaw@halophil.us).
 
 ---
 
