@@ -51,100 +51,144 @@
         .top-nav hr { /* Adds some space above the bar between the text and the divider */
             margin-top: 10px;
         }
+        
+        .indented-dropdown {
+            margin-left: 20px; /* Adjust the value as needed */
+        }
+
+        .reminder-am {
+            background-color: yellow;
+        }
+
+        .reminder-pm {
+            background-color: darkblue;
+            color: white;
+        }
+        
     </style>
     <script>
-        // Every 'name' value in this form represents a key value in the ImmutableMultiDict form passed to the Flask server upon POST and all processing is based on that
-        // Initialize value to zero
         var reminderCount = 0;
-        // Called every time a new reminder field is added, adds baseline options for reminder
+
         function addReminder() {
-            // Defines the container in which the reminder element is to appear
             var reminderContainer = document.getElementById("reminder-container");
             var reminderDiv = document.createElement("div");
-            // adds the reminder container
             reminderDiv.classList.add("reminder");
 
-            // Add time input element, requires that it be filled out in order to submit
+            // Time input
             var timeInput = document.createElement("input");
             timeInput.type = "time";
             timeInput.name = "reminder_time[]";
             timeInput.required = true;
-            
-            // Creates a label element to indicate purpose of time field
+            timeInput.addEventListener('change', function() {
+                if (this.value) {
+                    var hour = parseInt(this.value.substring(0, 2));
+                    if (hour < 12) {
+                        reminderDiv.classList.add("reminder-am");
+                        reminderDiv.classList.remove("reminder-pm");
+                    } else {
+                        reminderDiv.classList.add("reminder-pm");
+                        reminderDiv.classList.remove("reminder-am");
+                    }
+                } else {
+                    reminderDiv.classList.remove("reminder-am", "reminder-pm");
+                }
+            });
             var timeLabel = document.createElement("label");
             timeLabel.textContent = "Time:";
             reminderDiv.appendChild(timeLabel);
             reminderDiv.appendChild(timeInput);
 
-            // Add date input
+            // Date input
             var dateInput = document.createElement("input");
             dateInput.type = "date";
             dateInput.name = "reminder_date[]";
             dateInput.required = true;
-
-            // Add date label element
             var dateLabel = document.createElement("label");
             dateLabel.textContent = "Date:";
             reminderDiv.appendChild(dateLabel);
             reminderDiv.appendChild(dateInput);
-            
-            // Creates drop-down selection for repeater selection for every possible repeater value
+
+            // Repeat select
             var repeatSelect = document.createElement("select");
-            repeatSelect.name = "reminder_repeats[" + reminderCount + "]"; // Update the name to include the reminder index for this value
+            repeatSelect.name = "reminder_repeats[" + reminderCount + "]";
             var repeatOptions = ["Never", "Hourly", "Daily", "Weekly", "Monthly", "Yearly"];
-            // Loops through list of repeater options and adds them as an element to the drop-down, Never being the first making it the default
             repeatOptions.forEach(function(repeatOption) {
                 var option = document.createElement("option");
-                option.value = repeatOption; // The output string value is the same as
-                option.textContent = repeatOption; // The apparent string in the drop-down
+                option.value = repeatOption;
+                option.textContent = repeatOption;
                 repeatSelect.appendChild(option);
             });
-            // Labels for repeater selection
             var repeatLabel = document.createElement("label");
             repeatLabel.textContent = "Repeats:";
             reminderDiv.appendChild(repeatLabel);
             reminderDiv.appendChild(repeatSelect);
-            // Add checkboxes for each possible option, orders them in vertical arrangement
-            var options = ["Buzzer", "Vibration", "Web_Unlock", "Alarm"];
-            for (var i = 0; i < options.length; i++) {
-                var option = options[i];
 
+            // Options checkboxes
+            var options = ["Buzzer", "Vibration", "Web_Unlock", "Alarm"];
+            options.forEach(function(option) {
                 var optionInput = document.createElement("input");
                 optionInput.type = "checkbox";
                 optionInput.name = "reminder_options[" + reminderCount + "][" + option + "]";
                 optionInput.value = option;
-
                 var optionLabel = document.createElement("label");
                 optionLabel.textContent = option;
-
                 var rowDiv = document.createElement("div");
                 rowDiv.classList.add("form-row");
                 rowDiv.appendChild(optionLabel);
                 rowDiv.appendChild(optionInput);
                 reminderDiv.appendChild(rowDiv);
 
-                // Add an alarm dropdown if the option is "Alarm"
+                // Buzzer volume dropdown
+                if (option === "Buzzer") {
+                    var buzzerSelect = document.createElement("select");
+                    buzzerSelect.name = "reminder_buzzer[" + reminderCount + "]";
+                    buzzerSelect.style.display = "none";
+                    var volumes = ["Quiet", "Moderate", "Loud", "Ascending"];
+                    volumes.forEach(function(volume) {
+                        var buzzerElement = document.createElement("option");
+                        buzzerElement.value = volume;
+                        buzzerElement.textContent = volume;
+                        buzzerSelect.appendChild(buzzerElement);
+                    });
+                    var buzzerLabel = document.createElement("label");
+                    buzzerLabel.textContent = "Select Buzzer Volume:";
+                    buzzerLabel.style.display = "none";
+                    buzzerLabel.classList.add("indented-dropdown");
+                    buzzerSelect.classList.add("indented-dropdown");
+                    reminderDiv.appendChild(buzzerLabel);
+                    reminderDiv.appendChild(buzzerSelect);
+
+                    optionInput.addEventListener("change", function() {
+                        if (this.checked && this.value === "Buzzer") {
+                            buzzerSelect.style.display = "block";
+                            buzzerLabel.style.display = "block";
+                        } else {
+                            buzzerSelect.style.display = "none";
+                            buzzerLabel.style.display = "none";
+                        }
+                    });
+                }
+
+                // Alarm urgency dropdown
                 if (option === "Alarm") {
                     var alarmSelect = document.createElement("select");
                     alarmSelect.name = "reminder_alarm[" + reminderCount + "]";
                     alarmSelect.style.display = "none";
-                    // A drop down menu is generated showing all of the possible alarm urgencies
                     var alarms = ["Not at all", "Somewhat", "Urgent", "Very", "Extremely"];
-                    for (var j = 0; j < alarms.length; j++) {
-                        var alarm = alarms[j];
+                    alarms.forEach(function(alarm) {
                         var alarmElement = document.createElement("option");
-                        alarmElement.value = alarm; // Output value
-                        alarmElement.textContent = alarm; // Visible string
+                        alarmElement.value = alarm;
+                        alarmElement.textContent = alarm;
                         alarmSelect.appendChild(alarmElement);
-                    }
-                    
+                    });
                     var alarmLabel = document.createElement("label");
-                    alarmLabel.textContent = "Select Alarm:";
+                    alarmLabel.textContent = "Select Alarm Urgency:";
                     alarmLabel.style.display = "none";
+                    alarmLabel.classList.add("indented-dropdown");
+                    alarmSelect.classList.add("indented-dropdown");
                     reminderDiv.appendChild(alarmLabel);
                     reminderDiv.appendChild(alarmSelect);
 
-                    // Alters appearance of the page if the alarm option is selected
                     optionInput.addEventListener("change", function() {
                         if (this.checked && this.value === "Alarm") {
                             alarmSelect.style.display = "block";
@@ -153,18 +197,17 @@
                             alarmSelect.style.display = "none";
                             alarmLabel.style.display = "none";
                         }
-                
                     });
                 }
-            }
-            // If there is more than the o
+            });
+
             reminderContainer.appendChild(reminderDiv);
             if (reminderContainer.children.length > 1) {
                 addRemoveButton(reminderDiv);
             }
             reminderCount++;
         }
-        // Removes a reminder field and erases its data, removing the appropriate reminder container simultaneously
+
         function addRemoveButton(reminderDiv) {
             var removeButton = document.createElement("button");
             removeButton.type = "button";
@@ -174,14 +217,14 @@
             };
             reminderDiv.appendChild(removeButton);
         }
-                // Adds a reminder field
-                function init() {
+
+        function init() {
             addReminder();
         }
 
-        // Call init when the window finishes loading to add one default reminder object to the event form
         window.onload = init;
     </script>
+
 </head>
 <body>
     <div class="top-nav">
@@ -232,4 +275,3 @@
         </div>    
     </form>
 </body>
-

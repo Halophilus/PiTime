@@ -34,17 +34,25 @@
             max-height: 300px;
             object-fit: cover; /* crops image if necessary */
         }
+
+        .reminder-am {
+            background-color: yellow;
+        }
+
+        .reminder-pm {
+            background-color: darkblue;
+            color: white;
+        }
+
     </style>
 </head>
 <body>
 
     <div class="nav-bar">
-        <!-- Link to event submission page -->
         <div>
             <a href="/">Submit Event</a>
         </div>
         
-        <!-- Top bar buttons for sorting the events, creates URL that passes an argument to the events route to determine sorting order -->
         <div style="font-size: 0.8em; margin-top: 10px;">
             <a href="{{ url_for('events', sort='asc') }}">Sort Ascending</a> 
             <a href="{{ url_for('events', sort='desc') }}">Sort Descending</a>
@@ -52,38 +60,56 @@
         <hr>
     </div>
 
-    <!-- Section containing all of the events, iterated through the query using for logic, graying out events where all the reminders have been spent to mark them for deletion-->
     <div>
         {% for event in events %}
             <div class="event-container {{ 'grayed-out' if event.all_locked else '' }}">
-                <!-- event.description and event.title info from query -->
                 <div class="event-details">
                     <h1>{{ event.title }}</h1>
                     <p>{{ event.description }}</p>
 
-                    <!-- Loops through all reminders associated with the event object and displays relevant  -->
                     {% for reminder in event.reminders %}
-                        <div class="reminder {% if reminder.reminder_lock %}grayed-out{% endif %}">
-                            <p>Reminder: {{ reminder.date_time }} - Urgency: {{ reminder.alarm }} - Repeats: {{ reminder.repeater }}</p>
+                        {% set hour = reminder.date_time.hour %}
+                        {% set formatted_date = reminder.date_time.strftime('%A, %B %d, %I:%M %p') %}
+                        <div class="reminder
+                             {% if hour < 12 %}reminder-am
+                             {% else %}reminder-pm
+                             {% endif %}">
+                            <p>{{ formatted_date }}</p>
+                            <p>
+                                {% if reminder.buzzer %}
+                                    Buzzer ({{ reminder.buzzer }}), 
+                                {% endif %}
+                                {% if reminder.alarm %}
+                                    Alarm ({{ reminder.alarm }}), 
+                                {% endif %}
+                                {% if reminder.repeater != 'Never' %}
+                                    Repeats ({{ reminder.repeater }}), 
+                                {% endif %}
+                                {% if reminder.vibration %}
+                                    Vibration, 
+                                {% endif %}
+                                {% if reminder.web_unlock %}
+                                    Web Unlock
+                                {% endif %}
+                            </p>
                         </div>
                     {% endfor %}
-                    <!-- Edit button doesn't do anything yet, delete event sets event_lock flag to True, deactivating all events and reminders associated with that event-->
-                    <a href="/edit-event/{{ event.id }}" class="edit-btn">Edit Event</a> 
-                    <!-- This next button is embedded in a form to submit a POST request to the server so that the delete event function can be called-->
+                    
+                    <!--<a href="/edit-event/{{ event.id }}" class="edit-btn">Edit Event</a>--> 
                     <form action = "{{ url_for('delete_event', event_id=event.id) }}" method="post">
                         <button type="submit" class="delete-btn">Delete Event</button>
                     </form>
                 </div>
     
-                <!-- The image uploaded when the event was created, as a visual reminder for the event -->
                 {% if event.image_path %}
                     <div class="event-image">
-                        <img src="{{ url_for('static', filename=event.image_path) }}" alt="Test Image">
+                        <img src="{{ url_for('static', filename=event.image_path) }}" alt="Event Image">
                     </div>
                 {% endif %}
             </div>
         {% endfor %}
     </div>
+
     {% with messages = get_flashed_messages() %}
         {% if messages %}
             <div class="flash-messages">
@@ -93,5 +119,7 @@
             </div>
         {% endif %}
     {% endwith %}
+
 </body>
+
 </html>

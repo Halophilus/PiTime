@@ -38,7 +38,7 @@ class Reminder(db.Model):
     date_time = db.Column(db.DateTime, nullable=False)
     
     # Boolean attributes
-    buzzer = db.Column(db.Boolean, default = False)
+    buzzer = db.Column(db.String(120))
     vibration = db.Column(db.Boolean, default = False)
     web_unlock = db.Column(db.Boolean, default = False)
     reminder_lock = db.Column(db.Boolean, default = False)

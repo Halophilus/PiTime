@@ -1,11 +1,11 @@
 from flask import Flask, render_template, request, redirect, url_for, flash, abort
 from datetime import datetime
 import re, os, socket, time 
-from I2C_LCD_driver import lcd
+# from I2C_LCD_driver import lcd
 from models import db, Event, Reminder
 
 app = Flask(__name__, template_folder=os.path.join(os.path.dirname(os.path.abspath(__file__)), 'templates'))
-lcd_screen = lcd()
+# lcd_screen = lcd()
 
 image_folder = os.path.join(app.root_path, 'static') # Create a default folder to store images, in this case shared with the static folder
 if not os.path.exists(image_folder):
@@ -164,24 +164,28 @@ def parse_form_data(form):
 
         reminders = [] # A list of dictionaries each representing reminder objects 
         for index, reminder_id in enumerate(options_keys): # Pairing submitted reminder IDs to the order in which the reminders are declared
-            options, alarm, repeats = [], None, None # Options are a collection of qualities, alarm and repeats are single items that either exist or don't
+            options, alarm, repeats, buzzer = [], None, None, None # Options are a collection of qualities, alarm and repeats are single items that either exist or don't
             for key in form: # For every submitted value in the form
                 if key.startswith(f'reminder_options[{reminder_id}]'): # These keys occur first in the form, and are therefore processed first
                     options.append(form[key]) # Adds option (str) to the options list
                     print(f"{form[key]} option added to Reminder {index}")
                 if key.startswith(f'reminder_alarm[{reminder_id}]'): # These keys sometimes are sent out of order and thus need to be sorted by reminder ID
                     alarm = form[key] if 'Alarm' in options else None # Because options have already been parsed, this control structure allows an urgency to be set if and only if the alarm function has been enabled
-                    print(f"Alarm urgency {form[key]} added to Reminder {index}")
+                    print(f"Alarm urgency '{form[key]}' added to Reminder {index}")
                 if key.startswith(f'reminder_repeats[{reminder_id}]'): # ibid.
                     repeats = form[key]
-                    print(f"Repeater {form[key]} added to Reminder {index}")
+                    print(f"Repeater '{form[key]}' added to Reminder {index}")
+                if key.startswith(f'reminder_buzzer[{reminder_id}]'):
+                    buzzer = form[key] if 'Buzzer' in options else None
+                    print(f"Buzzer volume '{form[key]}' added to Reminder {index}")
 
             reminder_data = { # Each reminder objects gets mocked as a dictionary
                 'date': reminder_dates[index], # Corresponds submitted date time data to mocked reminder object using the index of the reminder ID in the sorted reminder ID data
                 'time': reminder_times[index],
                 'options': options,
                 'alarm': alarm,
-                'repeats': repeats
+                'repeats': repeats,
+                'buzzer': buzzer
             }
 
             print(f"Current reminder being processed:\n {reminder_data}")
@@ -214,9 +218,9 @@ def add_event_and_reminders(event_title, event_description, reminders_data):
             print(f"Current timepoint: {timepoint}")
             new_reminder = Reminder( # Definition of reminder_lock defaults to False but the remaining attributes are defined here
                 date_time=timepoint,
-                buzzer='Buzzer' in reminder_data['options'], # Creates a boolean flag depending on whether or not a certain target option is included for the reminder object
-                vibration='Vibration' in reminder_data['options'],
+                vibration='Vibration' in reminder_data['options'], # Creates a boolean flag depending on whether or not a certain target option is included for the reminder object
                 web_unlock='Web_Unlock' in reminder_data['options'],
+                buzzer=reminder_data['buzzer'],                 
                 alarm=reminder_data['alarm'],
                 repeater=reminder_data['repeats'],
                 event=current_event
@@ -481,12 +485,14 @@ def get_ip_address():
     except Exception as ex:
         return f"IP Error: {ex}"
 
+
 if __name__ == "__main__":
-    time.sleep(10)
-    ip_address = get_ip_address()
-    lcd_screen.lcd_clear()
-    lcd_screen.lcd_display_string("IP Address:", 1)
-    lcd_screen.lcd_display_string(ip_address, 2)
-    time.sleep(15)
-    lcd_screen.lcd_clear()
+    #time.sleep(10)
+    #ip_address = get_ip_address()
+    #lcd_screen.lcd_clear()
+    #lcd_screen.lcd_display_string("IP Address:", 1)
+    #lcd_screen.lcd_display_string(ip_address, 2)
+    #time.sleep(15)
+    #lcd_screen.lcd_clear()
     app.run(host = '0.0.0.0', debug=False)
+
